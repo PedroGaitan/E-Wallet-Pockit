@@ -3,9 +3,8 @@ import { Stack } from "expo-router";
 export default function RootLayout() {
   return (
     <Stack>
-      {/* Rutas de autenticación */}
+      {/* Auth Routes */}
       <Stack.Screen name="auth/login" options={{ headerShown: false }} />
-      <Stack.Screen name="auth/register" options={{ headerShown: false }} />
 
       {/* Este es tu layout de pestañas principales */}
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

@@ -205,9 +205,7 @@ export default function RechargeScreen() {
             >
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Monto</Text>
-                <Text style={styles.summaryValue}>
-                  ${total.toFixed(2)}
-                </Text>
+                <Text style={styles.summaryValue}>${total.toFixed(2)}</Text>
               </View>
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Comisión</Text>

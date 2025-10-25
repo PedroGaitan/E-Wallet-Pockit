@@ -12,7 +12,7 @@ import * as Haptics from "expo-haptics";
 
 export default function HomeScreen() {
   const [showBalance, setShowBalance] = useState(true);
-  const balance = 1546.0;
+  const balance = 1546.00;
   const userName = "Juan Pérez";
 
   return (

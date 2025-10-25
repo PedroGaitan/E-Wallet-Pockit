@@ -1,5 +1,6 @@
 import { Redirect } from "expo-router";
 
 export default function Index() {
-  return <Redirect href="/auth/login" />;
+  // Redirige al home dentro de tus tabs
+  return <Redirect href="../auth/login" />;
 }

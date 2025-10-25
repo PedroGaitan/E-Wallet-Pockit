@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { AppState, Platform } from 'react-native'
 import 'react-native-url-polyfill/auto'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -5,6 +6,16 @@ import { createClient, processLock } from '@supabase/supabase-js'
 
 const supabaseUrl = "https://ufrypzqkfdxzdccryrsw.supabase.co"
 const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmcnlwenFrZmR4emRjY3J5cnN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzMzg4NDAsImV4cCI6MjA3NjkxNDg0MH0.TX-5bKW9-6JcWCNOajLrlnJZqWSW503HRCNz89JA70k"
+=======
+import { AppState, Platform } from "react-native";
+import "react-native-url-polyfill/auto";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { createClient, processLock } from "@supabase/supabase-js";
+
+const supabaseUrl = "https://ufrypzqkfdxzdccryrsw.supabase.co";
+const supabaseAnonKey =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmcnlwenFrZmR4emRjY3J5cnN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzMzg4NDAsImV4cCI6MjA3NjkxNDg0MH0.TX-5bKW9-6JcWCNOajLrlnJZqWSW503HRCNz89JA70k";
+>>>>>>> main
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
@@ -14,7 +25,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: false,
     lock: processLock,
   },
+<<<<<<< HEAD
 })
+=======
+});
+>>>>>>> main
 
 // Tells Supabase Auth to continuously refresh the session automatically
 // if the app is in the foreground. When this is added, you will continue
@@ -22,6 +37,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 // `SIGNED_OUT` event if the user's session is terminated. This should
 // only be registered once.
 if (Platform.OS !== "web") {
+<<<<<<< HEAD
   AppState.addEventListener('change', (state) => {
     if (state === 'active') {
       supabase.auth.startAutoRefresh()
@@ -30,3 +46,13 @@ if (Platform.OS !== "web") {
     }
   })
 }
+=======
+  AppState.addEventListener("change", (state) => {
+    if (state === "active") {
+      supabase.auth.startAutoRefresh();
+    } else {
+      supabase.auth.stopAutoRefresh();
+    }
+  });
+}
+>>>>>>> main
