@@ -3,6 +3,9 @@ import { Stack } from "expo-router";
 export default function RootLayout() {
   return (
     <Stack>
+      {/* Auth Routes */}
+      <Stack.Screen name="auth/login" options={{ headerShown: false }} />
+
       {/* Este es tu layout de pestañas principales */}
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
 
@@ -11,10 +14,7 @@ export default function RootLayout() {
         name="recargardinero"
         options={{ title: "Recargar Dinero" }}
       />
-      <Stack.Screen
-        name="enviardinero"
-        options={{ title: "Enviar Dinero" }}
-      />
+      <Stack.Screen name="enviardinero" options={{ title: "Enviar Dinero" }} />
     </Stack>
   );
 }
