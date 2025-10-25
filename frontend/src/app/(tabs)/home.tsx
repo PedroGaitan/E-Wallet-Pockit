@@ -102,7 +102,7 @@ export default function HomeScreen() {
   );
 }
 
-// 🎨 Estilos
+// Estilos
 const styles = StyleSheet.create({
   container: {
     flex: 1,

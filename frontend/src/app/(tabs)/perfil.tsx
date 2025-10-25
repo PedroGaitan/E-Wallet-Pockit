@@ -1,9 +1,9 @@
 import { View, Text, StyleSheet } from 'react-native';
 
-export default function HistorialScreen() {
+export default function PerfilScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Historial de movimientos ⏱️</Text>
+      <Text style={styles.text}>Perfil de usuario</Text>
     </View>
   );
 }
