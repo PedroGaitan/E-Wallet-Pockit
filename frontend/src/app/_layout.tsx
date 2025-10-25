@@ -5,10 +5,9 @@ export default function RootLayout() {
     <Stack>
       {/* Rutas de autenticación */}
       <Stack.Screen name="auth/login" options={{ headerShown: false }} />
-      <Stack.Screen name="auth/register" options={{ headerShown: false }} />
 
       {/* Este es tu layout de pestañas principales */}
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="views" options={{ headerShown: false }} />
 
       {/* Estas son las nuevas pantallas fuera del tab */}
       <Stack.Screen
