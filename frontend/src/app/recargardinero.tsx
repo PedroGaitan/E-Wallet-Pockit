@@ -105,7 +105,7 @@ export default function RechargeScreen() {
         Alert.alert("Recarga completada", message);
       }
 
-      router.replace("/(tabs)/home");
+      router.replace("/views/home");
     } catch (err) {
       console.error(err);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -205,9 +205,7 @@ export default function RechargeScreen() {
             >
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Monto</Text>
-                <Text style={styles.summaryValue}>
-                  ${total.toFixed(2)}
-                </Text>
+                <Text style={styles.summaryValue}>${total.toFixed(2)}</Text>
               </View>
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Comisión</Text>

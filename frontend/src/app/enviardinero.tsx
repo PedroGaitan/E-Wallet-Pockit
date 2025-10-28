@@ -38,7 +38,10 @@ export default function SendMoneyScreen() {
   const buttonProgress = useRef(new Animated.Value(0)).current;
 
   const animatePressIn = () => {
-    Animated.spring(scaleAnim, { toValue: 0.95, useNativeDriver: true }).start();
+    Animated.spring(scaleAnim, {
+      toValue: 0.95,
+      useNativeDriver: true,
+    }).start();
   };
   const animatePressOut = () => {
     Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }).start();
@@ -82,7 +85,9 @@ export default function SendMoneyScreen() {
 
       if (res.success) {
         setBalance((b) => +(b - amountNum).toFixed(2));
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        await Haptics.notificationAsync(
+          Haptics.NotificationFeedbackType.Success
+        );
 
         const message = `💸 $${amountNum.toFixed(2)} enviados a ${recipient}`;
         if (Platform.OS === "android") {
@@ -91,7 +96,7 @@ export default function SendMoneyScreen() {
           Alert.alert("Enviado", message);
         }
 
-        router.replace("/(tabs)/home");
+        router.replace("/views/home");
       } else {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         Alert.alert("Error", "No se pudo completar la transacción.");
@@ -124,7 +129,7 @@ export default function SendMoneyScreen() {
           <TouchableOpacity
             onPress={async () => {
               await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.replace("/(tabs)/home");
+              router.replace("/views/home");
             }}
             activeOpacity={0.7}
             style={styles.backIconButton}
@@ -178,7 +183,9 @@ export default function SendMoneyScreen() {
             editable={!loading}
           />
         </View>
-        {exceedsBalance && <Text style={styles.errorText}>Saldo insuficiente</Text>}
+        {exceedsBalance && (
+          <Text style={styles.errorText}>Saldo insuficiente</Text>
+        )}
 
         {/* Monto rápido */}
         <View style={styles.quickContainer}>
@@ -211,7 +218,9 @@ export default function SendMoneyScreen() {
             disabled={!isFormValid || loading}
           >
             <LinearGradient
-              colors={isFormValid ? ["#2563eb", "#1e40af"] : ["#cbd5e1", "#cbd5e1"]}
+              colors={
+                isFormValid ? ["#2563eb", "#1e40af"] : ["#cbd5e1", "#cbd5e1"]
+              }
               start={[0, 0]}
               end={[1, 1]}
               style={[styles.sendButton, !isFormValid && { opacity: 0.7 }]}
@@ -267,7 +276,12 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   balanceLabel: { color: "#666", fontSize: 13 },
-  balanceValue: { fontSize: 26, fontWeight: "700", marginTop: 6, color: "#111" },
+  balanceValue: {
+    fontSize: 26,
+    fontWeight: "700",
+    marginTop: 6,
+    color: "#111",
+  },
   label: { color: "#333", fontWeight: "600", marginBottom: 6 },
   input: {
     backgroundColor: "#f1f5f9",
