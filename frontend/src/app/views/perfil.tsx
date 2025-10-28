@@ -32,7 +32,7 @@ export default function PerfilScreen() {
 
   const handleOptionPress = (action: string) => {
     Haptics.selectionAsync();
-    if (action === "settings") router.push("/views/settings");
+    if (action === "ajustes") router.push("/ajustes");
   };
 
   const handleLogout = () => {
