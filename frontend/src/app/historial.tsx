@@ -7,9 +7,11 @@ import {
   RefreshControl,
   useColorScheme,
   Pressable,
+  TouchableOpacity,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useRouter, Stack } from "expo-router";
 import Animated, { FadeInUp, FadeOut } from "react-native-reanimated";
 
 type Transaction = {
@@ -28,6 +30,7 @@ const mockData: Transaction[] = [
 
 export default function HistoryScreen() {
   const colorScheme = useColorScheme();
+  const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>(mockData);
 
@@ -53,18 +56,14 @@ export default function HistoryScreen() {
         : "arrow-down";
 
     return (
-      <Animated.View
-        entering={FadeInUp.delay(100).duration(300)}
-        exiting={FadeOut}
-      >
+      <Animated.View entering={FadeInUp.delay(100).duration(300)} exiting={FadeOut}>
         <Pressable
           onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
           style={({ pressed }) => [
             styles.itemContainer,
             {
               opacity: pressed ? 0.7 : 1,
-              backgroundColor:
-                colorScheme === "dark" ? "#1E1E1E" : "#FFFFFF",
+              backgroundColor: colorScheme === "dark" ? "#1E1E1E" : "#FFFFFF",
             },
           ]}
         >
@@ -73,10 +72,20 @@ export default function HistoryScreen() {
           </View>
 
           <View style={styles.textContainer}>
-            <Text style={[styles.label, { color: colorScheme === "dark" ? "#FFFFFF" : "#1A1A1A" }]}>
+            <Text
+              style={[
+                styles.label,
+                { color: colorScheme === "dark" ? "#FFFFFF" : "#1A1A1A" },
+              ]}
+            >
               {item.label}
             </Text>
-            <Text style={[styles.date, { color: colorScheme === "dark" ? "#BDBDBD" : "#757575" }]}>
+            <Text
+              style={[
+                styles.date,
+                { color: colorScheme === "dark" ? "#BDBDBD" : "#757575" },
+              ]}
+            >
               {item.date}
             </Text>
           </View>
@@ -108,11 +117,13 @@ export default function HistoryScreen() {
     <View
       style={[
         styles.container,
-        {
-          backgroundColor: colorScheme === "dark" ? "#121212" : "#FFFFFF",
-        },
+        { backgroundColor: colorScheme === "dark" ? "#121212" : "#FFFFFF" },
       ]}
     >
+      {/* Ocultar header de Expo */}
+      <Stack.Screen options={{ headerShown: false }} />
+
+      {/* Header con botón de regreso */}
       <View
         style={[
           styles.header,
@@ -122,6 +133,17 @@ export default function HistoryScreen() {
           },
         ]}
       >
+        <TouchableOpacity
+          onPress={async () => {
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push("/views/home");
+          }}
+          activeOpacity={0.7}
+          style={styles.backIconButton}
+        >
+          <Ionicons name="chevron-back" size={24} color="#ffffffff" />
+        </TouchableOpacity>
+
         <Text
           style={[
             styles.headerTitle,
@@ -132,13 +154,12 @@ export default function HistoryScreen() {
         </Text>
       </View>
 
+      {/* Lista o estado vacío */}
       {isEmpty ? (
         <View style={styles.emptyContainer}>
           <Ionicons name="time-outline" size={48} color="#BDBDBD" />
           <Text style={styles.emptyText}>Sin movimientos</Text>
-          <Text style={styles.emptySubText}>
-            Tus transacciones aparecerán aquí.
-          </Text>
+          <Text style={styles.emptySubText}>Tus transacciones aparecerán aquí.</Text>
         </View>
       ) : (
         <FlatList
@@ -160,24 +181,30 @@ export default function HistoryScreen() {
   );
 }
 
+/* Styles */
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   header: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingTop: 55,
     paddingBottom: 15,
-    alignItems: "center",
-    justifyContent: "center",
+    paddingHorizontal: 20,
     borderBottomWidth: 1,
     shadowColor: "#000",
     shadowOpacity: 0.05,
     shadowRadius: 5,
     elevation: 2,
   },
+  backIconButton: {
+    marginRight: 8,
+    padding: 6,
+    borderRadius: 10,
+    backgroundColor: "#000",
+  },
   headerTitle: {
-    fontSize: 22,
-    fontFamily: "Poppins-Bold",
+    fontSize: 20,
+    fontWeight: "700",
   },
   listContent: {
     paddingHorizontal: 20,
@@ -203,36 +230,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 12,
   },
-  textContainer: {
-    flex: 1,
-  },
-  label: {
-    fontSize: 16,
-    fontFamily: "Poppins-Medium",
-  },
-  date: {
-    fontSize: 13,
-    fontFamily: "Poppins-Regular",
-  },
-  amount: {
-    fontSize: 16,
-    fontFamily: "Poppins-SemiBold",
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  emptyText: {
-    marginTop: 10,
-    fontSize: 18,
-    fontFamily: "Poppins-Medium",
-    color: "#757575",
-  },
-  emptySubText: {
-    fontSize: 14,
-    color: "#9E9E9E",
-    marginTop: 4,
-    fontFamily: "Poppins-Regular",
-  },
+  textContainer: { flex: 1 },
+  label: { fontSize: 16, fontWeight: "600" },
+  date: { fontSize: 13 },
+  amount: { fontSize: 16, fontWeight: "700" },
+  emptyContainer: { flex: 1, alignItems: "center", justifyContent: "center" },
+  emptyText: { marginTop: 10, fontSize: 18, color: "#757575", fontWeight: "600" },
+  emptySubText: { fontSize: 14, color: "#9E9E9E", marginTop: 4 },
 });

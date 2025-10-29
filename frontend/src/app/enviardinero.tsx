@@ -129,7 +129,7 @@ export default function SendMoneyScreen() {
           <TouchableOpacity
             onPress={async () => {
               await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.replace("/views/home");
+              router.back();
             }}
             activeOpacity={0.7}
             style={styles.backIconButton}
