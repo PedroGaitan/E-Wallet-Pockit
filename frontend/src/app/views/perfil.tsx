@@ -11,6 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import Animated, { FadeInUp } from "react-native-reanimated";
+import { supabase } from "@/src/lib/supabase"; // Asegúrate de que la ruta coincida
 
 export default function PerfilScreen() {
   const colorScheme = useColorScheme();
@@ -35,9 +36,15 @@ export default function PerfilScreen() {
     if (action === "ajustes") router.push("/ajustes");
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    console.log("Cerrar sesión");
+
+    try {
+      await supabase.auth.signOut(); // 🔒 cerrar sesión
+      router.replace("/auth/login"); // 🚀 redirigir al login
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error);
+    }
   };
 
   const menuOptions = [
