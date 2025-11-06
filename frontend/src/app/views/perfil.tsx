@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: "#E0E0E0",
+    borderColor: "rgba(255,255,255,0.1)",
   },
   menuItem: {
     flexDirection: "row",

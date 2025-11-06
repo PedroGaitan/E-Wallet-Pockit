@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -6,31 +6,106 @@ import {
   FlatList,
   StyleSheet,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import Animated, { FadeInUp } from "react-native-reanimated";
+import { supabase } from "../../lib/supabase";
 
-// ✅ Tipo para las transacciones
 type Transaction = {
   id: string;
   type: "recarga" | "enviado" | "recibido";
-  amount: number;
-  date: string;
+  cantidad: number;
+  created_at: string;
+  remitente_id: string;
+  receptor_id: string;
 };
 
 export default function HomeScreen() {
   const router = useRouter();
   const [showBalance, setShowBalance] = useState(true);
-  const [balance] = useState(15420.75);
+  const [balance, setBalance] = useState<number | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
-  const [transactions] = useState<Transaction[]>([
-    { id: "1", type: "recarga", amount: 100.0, date: "27 Oct 2025" },
-    { id: "2", type: "enviado", amount: 45.5, date: "25 Oct 2025" },
-    { id: "3", type: "recibido", amount: 80.75, date: "23 Oct 2025" },
-  ]);
+  // 🟢 Obtener usuario y saldo
+  useEffect(() => {
+    const fetchUserAndBalance = async () => {
+      setLoading(true);
+      const { data, error } = await supabase.auth.getUser();
+
+      if (error || !data.user) {
+        console.log("❌ No hay usuario autenticado");
+        setLoading(false);
+        return;
+      }
+
+      const user = data.user;
+      setUserId(user.id);
+      setUserEmail(user.email ?? null);
+
+      // 🟢 Obtener saldo
+      const { data: balanceData, error: balanceError } = await supabase
+        .from("users")
+        .select("balance")
+        .eq("id", user.id)
+        .limit(1);
+
+      if (balanceError) {
+        console.log("❌ Error al obtener saldo:", balanceError);
+      } else if (balanceData && balanceData.length > 0) {
+        setBalance(Number(balanceData[0].balance));
+        console.log("🟢 Saldo cargado:", balanceData[0].balance);
+      } else{
+        console.log("⚠️ No se encontró saldo para este usuario. balanceData:", balanceData);
+        setBalance(0);
+      }
+      setLoading(false);
+    };
+
+    fetchUserAndBalance();
+  }, []);
+
+  // 🟡 Cargar transacciones
+  useEffect(() => {
+    if (!userId) return;
+
+    const fetchTransactions = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("transactions")
+        .select("*")
+        .or(`remitente_id.eq.${userId},receptor_id.eq.${userId}`)
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      if (error) {
+        console.log("❌ Error al obtener transacciones:", error.message);
+        setLoading(false);
+        return;
+      }
+
+      const formatted = data.map((tx) => {
+        let type: Transaction["type"] = "recarga";
+        if (tx.remitente_id === userId && tx.type === "send") type = "enviado";
+        else if (tx.receptor_id === userId && tx.type === "receive")
+          type = "recibido";
+        else if (tx.type === "recharge") type = "recarga";
+
+        return { ...tx, type };
+      });
+
+      setTransactions(formatted);
+      setLoading(false);
+    };
+
+    fetchTransactions();
+  }, [userId]);
 
   const toggleBalance = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -38,33 +113,40 @@ export default function HomeScreen() {
   };
 
   const onViewAllTransactions = async () => {
-  await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-  router.push({
-    pathname: "/historial",
-    params: { animate: "slide" },
-  });
-};
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.push("../historial");
+  };
 
   const renderTransaction = ({ item }: { item: Transaction }) => {
     const isSend = item.type === "enviado";
     const isReceive = item.type === "recibido";
     const isTopUp = item.type === "recarga";
 
-    const color =
-      isSend ? "#ef4444" : isReceive ? "#3b82f6" : isTopUp ? "#10b981" : "#fff";
-    const bgColor =
-      isSend
-        ? "rgba(239,68,68,0.15)"
-        : isReceive
-        ? "rgba(59,130,246,0.15)"
-        : "rgba(16,185,129,0.15)";
+    const color = isSend
+      ? "#ef4444"
+      : isReceive
+      ? "#3b82f6"
+      : isTopUp
+      ? "#10b981"
+      : "#fff";
 
-    const icon =
-      isSend
-        ? "arrow-up-outline"
-        : isReceive
-        ? "arrow-down-outline"
-        : "wallet-outline";
+    const bgColor = isSend
+      ? "rgba(239,68,68,0.15)"
+      : isReceive
+      ? "rgba(59,130,246,0.15)"
+      : "rgba(16,185,129,0.15)";
+
+    const icon = isSend
+      ? "arrow-up-outline"
+      : isReceive
+      ? "arrow-down-outline"
+      : "wallet-outline";
+
+    const date = new Date(item.created_at).toLocaleDateString("es-MX", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
 
     return (
       <Animated.View
@@ -76,16 +158,25 @@ export default function HomeScreen() {
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.txLabel}>
-            {isSend ? "Envío de dinero" : isReceive ? "Dinero recibido" : "Recarga"}
+            {isSend
+              ? "Envío de dinero"
+              : isReceive
+              ? "Dinero recibido"
+              : "Recarga"}
           </Text>
-          <Text style={styles.txDate}>{item.date}</Text>
+          <Text style={styles.txDate}>{date}</Text>
         </View>
         <Text style={[styles.txAmount, { color }]}>
-          {isSend ? "-" : "+"}${item.amount.toFixed(2)}
+          {isSend ? "-" : "+"}${item.cantidad.toFixed(2)}
         </Text>
       </Animated.View>
     );
   };
+
+  // 🧑 Mostrar nombre derivado del correo
+  const displayName = userEmail
+    ? userEmail.split("@")[0].replace(/[._\-]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+    : "Usuario";
 
   return (
     <View style={styles.container}>
@@ -98,7 +189,7 @@ export default function HomeScreen() {
       >
         <View>
           <Text style={styles.welcomeText}>Bienvenido,</Text>
-          <Text style={styles.username}>Rio Storm</Text>
+          <Text style={styles.username}>{displayName}</Text>
         </View>
         <TouchableOpacity
           style={styles.eyeButton}
@@ -121,13 +212,17 @@ export default function HomeScreen() {
         style={styles.balanceCard}
       >
         <Text style={styles.balanceLabel}>Saldo disponible</Text>
-        <Text style={styles.balanceValue}>
-          {showBalance
-            ? `$${balance.toLocaleString("es-MX", {
-                minimumFractionDigits: 2,
-              })}`
-            : "$•••••"}
-        </Text>
+        {loading ? (
+          <ActivityIndicator color="#fff" style={{ marginTop: 10 }} />
+        ) : (
+          <Text style={styles.balanceValue}>
+            {showBalance
+              ? `$${balance?.toLocaleString("es-MX", {
+                  minimumFractionDigits: 2,
+                })}`
+              : "$•••••"}
+          </Text>
+        )}
       </LinearGradient>
 
       {/* Acciones rápidas */}
@@ -171,7 +266,9 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {transactions.length > 0 ? (
+        {loading ? (
+          <ActivityIndicator color="#fff" style={{ marginTop: 20 }} />
+        ) : transactions.length > 0 ? (
           <>
             <FlatList
               data={transactions.slice(0, 3)}
@@ -179,8 +276,6 @@ export default function HomeScreen() {
               renderItem={renderTransaction}
               contentContainerStyle={{ paddingBottom: 12 }}
             />
-
-            {/* ✅ Nuevo botón "Ver historial completo" */}
             <TouchableOpacity
               style={styles.fullHistoryButton}
               activeOpacity={0.8}
@@ -210,11 +305,7 @@ export default function HomeScreen() {
 
 /* 🎨 Estilos */
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#0b0b0b",
-    paddingBottom: 24,
-  },
+  container: { flex: 1, backgroundColor: "#0b0b0b", paddingBottom: 24 },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -252,10 +343,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginBottom: 12,
   },
-  actionRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
+  actionRow: { flexDirection: "row", justifyContent: "space-between" },
   actionButton: {
     flex: 1,
     flexDirection: "row",
@@ -266,15 +354,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 6,
     borderRadius: 14,
   },
-  actionText: {
-    color: "#fff",
-    fontWeight: "700",
-    marginLeft: 6,
-  },
-  recentSection: {
-    marginTop: 32,
-    marginHorizontal: 20,
-  },
+  actionText: { color: "#fff", fontWeight: "700", marginLeft: 6 },
+  recentSection: { marginTop: 32, marginHorizontal: 20 },
   recentHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -301,32 +382,18 @@ const styles = StyleSheet.create({
   txLabel: { color: "#fff", fontSize: 15, fontWeight: "600" },
   txDate: { color: "#9ca3af", fontSize: 12, marginTop: 2 },
   txAmount: { fontSize: 15, fontWeight: "700" },
-  emptyState: {
-    alignItems: "center",
-    paddingVertical: 40,
-  },
-  emptyTitle: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
-    marginTop: 12,
-  },
+  emptyState: { alignItems: "center", paddingVertical: 40 },
+  emptyTitle: { color: "#fff", fontSize: 16, fontWeight: "700", marginTop: 12 },
   emptySubtitle: { color: "#9ca3af", fontSize: 14, marginTop: 4 },
-
   fullHistoryButton: {
-  flexDirection: "row",
-  alignItems: "center",
-  justifyContent: "center",
-  backgroundColor: "#27272a",
-  borderRadius: 16,
-  paddingVertical: 12,
-  marginTop: 12,
-  gap: 8,
-},
-
-  fullHistoryText: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "600",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#27272a",
+    borderRadius: 16,
+    paddingVertical: 12,
+    marginTop: 12,
+    gap: 8,
   },
+  fullHistoryText: { color: "#fff", fontSize: 15, fontWeight: "600" },
 });

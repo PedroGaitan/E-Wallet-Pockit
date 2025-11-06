@@ -17,17 +17,17 @@ import {
 import * as Haptics from "expo-haptics";
 import { useRouter, Stack } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons } from "@expo/vector-icons"; // ← agregado
+import { Ionicons } from "@expo/vector-icons";
+import { supabase } from "../lib/supabase";
 
 const QUICK_AMOUNTS = [50, 100, 500];
 
 export default function SendMoneyScreen() {
   const router = useRouter();
-
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
-  const [balance, setBalance] = useState<number>(15420.75);
+  const [balance, setBalance] = useState<number>(0);
 
   const amountNum = parseFloat(amount.replace(",", ".")) || 0;
   const isEmailValid = /^\S+@\S+\.\S+$/.test(recipient.trim());
@@ -37,14 +37,34 @@ export default function SendMoneyScreen() {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const buttonProgress = useRef(new Animated.Value(0)).current;
 
+  // 🟢 Cargar saldo desde Supabase
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("users")
+        .select("balance")
+        .eq("email", user.email)
+        .single();
+
+      if (!error && data) setBalance(data.balance);
+    })();
+  }, []);
+
   const animatePressIn = () => {
     Animated.spring(scaleAnim, {
       toValue: 0.95,
       useNativeDriver: true,
     }).start();
   };
+
   const animatePressOut = () => {
-    Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }).start();
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
   };
 
   useEffect(() => {
@@ -63,48 +83,101 @@ export default function SendMoneyScreen() {
     }
   }, [loading]);
 
-  const fakeSendRequest = (recipientEmail: string, amountValue: number) =>
-    new Promise<{ success: boolean }>((resolve) =>
-      setTimeout(() => resolve({ success: true }), 1200)
-    );
-
   const onQuickSelect = (val: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setAmount(String(val));
     Keyboard.dismiss();
   };
 
+  // 💸 Enviar dinero usando la función PostgreSQL segura
   const handleSend = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     animatePressIn();
     setLoading(true);
 
     try {
-      await new Promise((r) => setTimeout(r, 250));
-      const res = await fakeSendRequest(recipient.trim(), amountNum);
+      // 1️⃣ Usuario autenticado
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("No se encontró usuario activo");
 
-      if (res.success) {
-        setBalance((b) => +(b - amountNum).toFixed(2));
-        await Haptics.notificationAsync(
-          Haptics.NotificationFeedbackType.Success
-        );
+      console.log("✅ Usuario autenticado:", user.email);
 
-        const message = `💸 $${amountNum.toFixed(2)} enviados a ${recipient}`;
-        if (Platform.OS === "android") {
-          ToastAndroid.show(message, ToastAndroid.SHORT);
-        } else {
-          Alert.alert("Enviado", message);
-        }
+      // 2️⃣ Obtener ID del remitente
+      const { data: remitenteData, error: remitenteError } = await supabase
+        .from("users")
+        .select("id, email, balance")
+        .eq("email", user.email)
+        .single();
 
-        router.replace("/views/home");
-      } else {
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        Alert.alert("Error", "No se pudo completar la transacción.");
+      if (remitenteError || !remitenteData) {
+        throw new Error("Remitente no encontrado.");
       }
-    } catch (err) {
-      console.error(err);
+      console.log("📤 Remitente:", remitenteData.email, "Balance:", remitenteData.balance);
+
+      // 3️⃣ Obtener ID del receptor
+      const cleanEmail = recipient.trim().toLowerCase();
+      console.log("📧 Buscando receptor:", cleanEmail);
+
+      const { data: receptorData, error: receptorError } = await supabase
+        .from("users")
+        .select("id, email")
+        .eq("email", cleanEmail)
+        .single();
+
+      if (receptorError || !receptorData) {
+        Alert.alert("Error", "Usuario no encontrado. Verifica el correo.");
+        throw new Error("Receptor no encontrado");
+      }
+      console.log("📥 Receptor encontrado:", receptorData.email);
+
+      // 4️⃣ Validaciones previas
+      if (amountNum > remitenteData.balance) {
+        Alert.alert("Error", "Saldo insuficiente");
+        return;
+      }
+
+      if (remitenteData.id === receptorData.id) {
+        Alert.alert("Error", "No puedes enviarte dinero a ti mismo");
+        return;
+      }
+
+      // 5️⃣ Llamar a la función de transferencia de PostgreSQL
+      console.log("💸 Ejecutando transferencia segura...");
+      const { data, error } = await supabase.rpc('transfer_money', {
+        sender_id: remitenteData.id,
+        receiver_id: receptorData.id,
+        amount: amountNum
+      });
+
+      if (error) {
+        console.error("❌ Error en transferencia:", error);
+        throw new Error(error.message || "Error al realizar la transferencia");
+      }
+
+      console.log("✅ Transferencia exitosa:", data);
+
+      // Actualizar balance local
+      setBalance((prev) => +(prev - amountNum).toFixed(2));
+
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      const message = `💸 S/.${amountNum.toFixed(2)} enviados a ${receptorData.email}`;
+      
+      if (Platform.OS === "android") {
+        ToastAndroid.show(message, ToastAndroid.SHORT);
+      } else {
+        Alert.alert("Enviado", message);
+      }
+
+      // Limpiar campos y volver
+      setRecipient("");
+      setAmount("");
+      router.replace("/views/home");
+
+    } catch (err: any) {
+      console.error("❌ ERROR DETECTADO:", err);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Error", "Ocurrió un error. Reintenta más tarde.");
+      Alert.alert("Error", err.message || "Ocurrió un problema al enviar dinero.");
     } finally {
       setLoading(false);
       animatePressOut();
@@ -122,7 +195,7 @@ export default function SendMoneyScreen() {
       behavior={Platform.select({ ios: "padding", android: undefined })}
     >
       <Stack.Screen options={{ headerShown: false }} />
-
+      
       <View style={styles.container}>
         {/* Header con botón de regreso */}
         <View style={styles.header}>
@@ -136,7 +209,6 @@ export default function SendMoneyScreen() {
           >
             <Ionicons name="chevron-back" size={24} color="#1e3a8a" />
           </TouchableOpacity>
-
           <Text style={styles.pageTitle}>Enviar dinero</Text>
         </View>
 
@@ -144,7 +216,7 @@ export default function SendMoneyScreen() {
         <View style={styles.balanceCard}>
           <Text style={styles.balanceLabel}>Saldo disponible</Text>
           <Text style={styles.balanceValue}>
-            ${balance.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+            S/.{balance.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
           </Text>
         </View>
 
@@ -170,7 +242,7 @@ export default function SendMoneyScreen() {
 
         <Text style={[styles.label, { marginTop: 12 }]}>Monto a enviar</Text>
         <View style={styles.amountRow}>
-          <Text style={styles.currency}>$</Text>
+          <Text style={styles.currency}>S/.</Text>
           <TextInput
             value={amount}
             onChangeText={(t) => {
@@ -197,7 +269,7 @@ export default function SendMoneyScreen() {
               style={styles.quickButton}
               disabled={loading}
             >
-              <Text style={styles.quickText}>${q}</Text>
+              <Text style={styles.quickText}>S/.{q}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -206,7 +278,7 @@ export default function SendMoneyScreen() {
         <View style={styles.summary}>
           <Text style={styles.summaryText}>Resumen</Text>
           <Text style={styles.summaryAmount}>
-            A enviar: ${amountNum > 0 ? amountNum.toFixed(2) : "0.00"}
+            A enviar: S/.{amountNum > 0 ? amountNum.toFixed(2) : "0.00"}
           </Text>
         </View>
 
@@ -240,7 +312,7 @@ export default function SendMoneyScreen() {
   );
 }
 
-/* Styles */
+/* 💅 Styles */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -275,14 +347,21 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  balanceLabel: { color: "#666", fontSize: 13 },
+  balanceLabel: {
+    color: "#666",
+    fontSize: 13,
+  },
   balanceValue: {
     fontSize: 26,
     fontWeight: "700",
     marginTop: 6,
     color: "#111",
   },
-  label: { color: "#333", fontWeight: "600", marginBottom: 6 },
+  label: {
+    color: "#333",
+    fontWeight: "600",
+    marginBottom: 6,
+  },
   input: {
     backgroundColor: "#f1f5f9",
     borderRadius: 12,
@@ -332,8 +411,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#eef2ff",
   },
-  summaryText: { color: "#666", fontSize: 13 },
-  summaryAmount: { fontSize: 16, fontWeight: "700", marginTop: 6 },
+  summaryText: {
+    color: "#666",
+    fontSize: 13,
+  },
+  summaryAmount: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginTop: 6,
+  },
   sendButton: {
     paddingVertical: 14,
     borderRadius: 12,
@@ -344,5 +430,9 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     fontSize: 16,
   },
-  errorText: { color: "#ef4444", marginTop: 6, marginBottom: 6 },
+  errorText: {
+    color: "#ef4444",
+    marginTop: 6,
+    marginBottom: 6,
+  },
 });
