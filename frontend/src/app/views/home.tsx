@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Platform,
   ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -22,6 +23,8 @@ type Transaction = {
   created_at: string;
   remitente_id: string;
   receptor_id: string;
+  receptor_email?: string;
+  remitente_email?: string;
 };
 
 export default function HomeScreen() {
@@ -30,82 +33,147 @@ export default function HomeScreen() {
   const [balance, setBalance] = useState<number | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   // 🟢 Obtener usuario y saldo
-  useEffect(() => {
-    const fetchUserAndBalance = async () => {
-      setLoading(true);
-      const { data, error } = await supabase.auth.getUser();
+  const fetchUserAndBalance = async () => {
+    const { data, error } = await supabase.auth.getUser();
 
-      if (error || !data.user) {
-        console.log("❌ No hay usuario autenticado");
-        setLoading(false);
-        return;
-      }
-
-      const user = data.user;
-      setUserId(user.id);
-      setUserEmail(user.email ?? null);
-
-      // 🟢 Obtener saldo
-      const { data: balanceData, error: balanceError } = await supabase
-        .from("users")
-        .select("balance")
-        .eq("id", user.id)
-        .limit(1);
-
-      if (balanceError) {
-        console.log("❌ Error al obtener saldo:", balanceError);
-      } else if (balanceData && balanceData.length > 0) {
-        setBalance(Number(balanceData[0].balance));
-        console.log("🟢 Saldo cargado:", balanceData[0].balance);
-      } else{
-        console.log("⚠️ No se encontró saldo para este usuario. balanceData:", balanceData);
-        setBalance(0);
-      }
+    if (error || !data.user) {
+      console.log("❌ No hay usuario autenticado");
       setLoading(false);
-    };
+      return;
+    }
 
-    fetchUserAndBalance();
-  }, []);
+    const user = data.user;
+    setUserEmail(user.email ?? null);
+    console.log("🔐 Auth User ID:", user.id);
+    console.log("📧 Auth User Email:", user.email);
+
+    // 🟢 Obtener saldo usando el email
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("id, balance, email")
+      .eq("email", user.email)
+      .single();
+
+    if (userError) {
+      console.log("❌ Error al obtener datos del usuario:", userError);
+    } else if (userData) {
+      setBalance(Number(userData.balance));
+      setUserId(userData.id); // Usar el ID de la tabla users
+      console.log("🟢 Saldo cargado:", userData.balance);
+      console.log("🟢 User ID de tabla users:", userData.id);
+      console.log("🟢 Email en users:", userData.email);
+    } else {
+      console.log("⚠️ No se encontró usuario en la tabla users");
+      setBalance(0);
+    }
+  };
 
   // 🟡 Cargar transacciones
-  useEffect(() => {
-    if (!userId) return;
+  const fetchTransactions = async () => {
+    if (!userId) {
+      console.log("⚠️ No hay userId, no se pueden cargar transacciones");
+      return;
+    }
 
-    const fetchTransactions = async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("transactions")
-        .select("*")
-        .or(`remitente_id.eq.${userId},receptor_id.eq.${userId}`)
-        .order("created_at", { ascending: false })
-        .limit(10);
+    console.log("📊 Cargando transacciones para user ID:", userId);
 
-      if (error) {
-        console.log("❌ Error al obtener transacciones:", error.message);
-        setLoading(false);
-        return;
+    // 🔍 DEBUG: Ver TODAS las transacciones primero
+    const { data: allTx, error: allError } = await supabase
+      .from("transactions")
+      .select("*");
+    
+    console.log("🔍 TODAS las transacciones en la BD:", allTx);
+    console.log("🔍 Total de transacciones:", allTx?.length || 0);
+
+    const { data, error } = await supabase
+      .from("transactions")
+      .select("*")
+      .or(`remitente_id.eq.${userId},receptor_id.eq.${userId}`)
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    if (error) {
+      console.log("❌ Error al obtener transacciones:", error.message);
+      return;
+    }
+
+    console.log("📦 Transacciones filtradas para el usuario:", data?.length || 0);
+    console.log("📦 Datos de transacciones:", data);
+
+    if (!data || data.length === 0) {
+      setTransactions([]);
+      return;
+    }
+
+    // Obtener emails de remitentes y receptores
+    const userIds = new Set<string>();
+    data.forEach((tx) => {
+      if (tx.remitente_id) userIds.add(tx.remitente_id);
+      if (tx.receptor_id) userIds.add(tx.receptor_id);
+    });
+
+    const { data: usersData } = await supabase
+      .from("users")
+      .select("id, email")
+      .in("id", Array.from(userIds));
+
+    const userMap = new Map(usersData?.map((u) => [u.id, u.email]) || []);
+
+    const formatted: Transaction[] = data.map((tx) => {
+      let type: Transaction["type"] = "recarga";
+
+      // Determinar el tipo de transacción según quién es el usuario actual
+      if (tx.remitente_id === userId && tx.receptor_id !== userId) {
+        // El usuario actual envió dinero
+        type = "enviado";
+      } else if (tx.receptor_id === userId && tx.remitente_id !== userId) {
+        // El usuario actual recibió dinero
+        type = "recibido";
+      } else if (tx.remitente_id === userId && tx.receptor_id === userId) {
+        // Es una recarga (remitente y receptor son el mismo)
+        type = "recarga";
       }
 
-      const formatted = data.map((tx) => {
-        let type: Transaction["type"] = "recarga";
-        if (tx.remitente_id === userId && tx.type === "send") type = "enviado";
-        else if (tx.receptor_id === userId && tx.type === "receive")
-          type = "recibido";
-        else if (tx.type === "recharge") type = "recarga";
+      return {
+        ...tx,
+        type,
+        remitente_email: userMap.get(tx.remitente_id),
+        receptor_email: userMap.get(tx.receptor_id),
+      };
+    });
 
-        return { ...tx, type };
-      });
+    console.log("✅ Transacciones formateadas:", formatted);
+    setTransactions(formatted);
+  };
 
-      setTransactions(formatted);
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      await fetchUserAndBalance();
       setLoading(false);
     };
+    loadData();
+  }, []);
 
-    fetchTransactions();
+  useEffect(() => {
+    if (userId) {
+      fetchTransactions();
+    }
   }, [userId]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchUserAndBalance();
+    if (userId) {
+      await fetchTransactions();
+    }
+    setRefreshing(false);
+  };
 
   const toggleBalance = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -122,13 +190,14 @@ export default function HomeScreen() {
     const isReceive = item.type === "recibido";
     const isTopUp = item.type === "recarga";
 
+    // 🔴 Rojo para envíos (pérdida)
+    // 🔵 Azul para recibidos (ganancia)
+    // 🟢 Verde para recargas
     const color = isSend
       ? "#ef4444"
       : isReceive
       ? "#3b82f6"
-      : isTopUp
-      ? "#10b981"
-      : "#fff";
+      : "#10b981";
 
     const bgColor = isSend
       ? "rgba(239,68,68,0.15)"
@@ -142,11 +211,21 @@ export default function HomeScreen() {
       ? "arrow-down-outline"
       : "wallet-outline";
 
-    const date = new Date(item.created_at).toLocaleDateString("es-MX", {
+    const date = new Date(item.created_at).toLocaleDateString("es-PE", {
       day: "2-digit",
       month: "short",
       year: "numeric",
     });
+
+    // Descripción más detallada
+    let description = "";
+    if (isSend) {
+      description = `Enviado a ${item.receptor_email || "Usuario"}`;
+    } else if (isReceive) {
+      description = `Recibido de ${item.remitente_email || "Usuario"}`;
+    } else {
+      description = "Recarga de saldo";
+    }
 
     return (
       <Animated.View
@@ -157,17 +236,11 @@ export default function HomeScreen() {
           <Ionicons name={icon} size={20} color={color} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.txLabel}>
-            {isSend
-              ? "Envío de dinero"
-              : isReceive
-              ? "Dinero recibido"
-              : "Recarga"}
-          </Text>
+          <Text style={styles.txLabel}>{description}</Text>
           <Text style={styles.txDate}>{date}</Text>
         </View>
         <Text style={[styles.txAmount, { color }]}>
-          {isSend ? "-" : "+"}${item.cantidad.toFixed(2)}
+          {isSend ? "-" : "+"}S/.{item.cantidad.toFixed(2)}
         </Text>
       </Animated.View>
     );
@@ -175,137 +248,167 @@ export default function HomeScreen() {
 
   // 🧑 Mostrar nombre derivado del correo
   const displayName = userEmail
-    ? userEmail.split("@")[0].replace(/[._\-]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+    ? userEmail
+        .split("@")[0]
+        .replace(/[._\-]/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase())
     : "Usuario";
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <LinearGradient
-        colors={["#0f172a", "#1e293b"]}
-        start={[0, 0]}
-        end={[1, 1]}
-        style={styles.header}
-      >
-        <View>
-          <Text style={styles.welcomeText}>Bienvenido,</Text>
-          <Text style={styles.username}>{displayName}</Text>
-        </View>
-        <TouchableOpacity
-          style={styles.eyeButton}
-          activeOpacity={0.8}
-          onPress={toggleBalance}
-        >
-          <Ionicons
-            name={showBalance ? "eye" : "eye-off"}
-            size={24}
-            color="#fff"
+      <FlatList
+        data={transactions.slice(0, 3)}
+        keyExtractor={(item) => item.id}
+        renderItem={renderTransaction}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#fff"
+            colors={["#2563eb"]}
           />
-        </TouchableOpacity>
-      </LinearGradient>
-
-      {/* Balance */}
-      <LinearGradient
-        colors={["#1e1e1e", "#2d2d2d"]}
-        start={[0, 0]}
-        end={[1, 1]}
-        style={styles.balanceCard}
-      >
-        <Text style={styles.balanceLabel}>Saldo disponible</Text>
-        {loading ? (
-          <ActivityIndicator color="#fff" style={{ marginTop: 10 }} />
-        ) : (
-          <Text style={styles.balanceValue}>
-            {showBalance
-              ? `$${balance?.toLocaleString("es-MX", {
-                  minimumFractionDigits: 2,
-                })}`
-              : "$•••••"}
-          </Text>
-        )}
-      </LinearGradient>
-
-      {/* Acciones rápidas */}
-      <View style={styles.actionsSection}>
-        <Text style={styles.sectionTitle}>Acciones rápidas</Text>
-        <View style={styles.actionRow}>
-          <TouchableOpacity
-            activeOpacity={0.85}
-            style={styles.actionButton}
-            onPress={async () => {
-              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              router.push("/enviardinero");
-            }}
-          >
-            <Ionicons name="send" size={22} color="#fff" />
-            <Text style={styles.actionText}>Enviar</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.85}
-            style={[styles.actionButton, { backgroundColor: "#16a34a" }]}
-            onPress={async () => {
-              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              router.push("/recargardinero");
-            }}
-          >
-            <Ionicons name="add" size={26} color="#fff" />
-            <Text style={styles.actionText}>Recargar</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Actividad reciente */}
-      <View style={styles.recentSection}>
-        <View style={styles.recentHeader}>
-          <Text style={styles.sectionTitle}>Actividad reciente</Text>
-          {transactions.length > 3 && (
-            <TouchableOpacity activeOpacity={0.7} onPress={onViewAllTransactions}>
-              <Text style={styles.viewAll}>Ver todas</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {loading ? (
-          <ActivityIndicator color="#fff" style={{ marginTop: 20 }} />
-        ) : transactions.length > 0 ? (
+        }
+        ListHeaderComponent={
           <>
-            <FlatList
-              data={transactions.slice(0, 3)}
-              keyExtractor={(item) => item.id}
-              renderItem={renderTransaction}
-              contentContainerStyle={{ paddingBottom: 12 }}
+            {/* Header */}
+            <LinearGradient
+              colors={["#0f172a", "#1e293b"]}
+              start={[0, 0]}
+              end={[1, 1]}
+              style={styles.header}
+            >
+              <View>
+                <Text style={styles.welcomeText}>Bienvenido,</Text>
+                <Text style={styles.username}>{displayName}</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.eyeButton}
+                activeOpacity={0.8}
+                onPress={toggleBalance}
+              >
+                <Ionicons
+                  name={showBalance ? "eye" : "eye-off"}
+                  size={24}
+                  color="#fff"
+                />
+              </TouchableOpacity>
+            </LinearGradient>
+
+            {/* Balance */}
+            <LinearGradient
+              colors={["#1e1e1e", "#2d2d2d"]}
+              start={[0, 0]}
+              end={[1, 1]}
+              style={styles.balanceCard}
+            >
+              <Text style={styles.balanceLabel}>Saldo disponible</Text>
+              {loading ? (
+                <ActivityIndicator color="#fff" style={{ marginTop: 10 }} />
+              ) : (
+                <Text style={styles.balanceValue}>
+                  {showBalance
+                    ? `S/.${balance?.toLocaleString("es-PE", {
+                        minimumFractionDigits: 2,
+                      })}`
+                    : "S/.•••••"}
+                </Text>
+              )}
+            </LinearGradient>
+
+            {/* Acciones rápidas */}
+            <View style={styles.actionsSection}>
+              <Text style={styles.sectionTitle}>Acciones rápidas</Text>
+              <View style={styles.actionRow}>
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  style={styles.actionButton}
+                  onPress={async () => {
+                    await Haptics.impactAsync(
+                      Haptics.ImpactFeedbackStyle.Medium
+                    );
+                    router.push("/enviardinero");
+                  }}
+                >
+                  <Ionicons name="send" size={22} color="#fff" />
+                  <Text style={styles.actionText}>Enviar</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  style={[styles.actionButton, { backgroundColor: "#16a34a" }]}
+                  onPress={async () => {
+                    await Haptics.impactAsync(
+                      Haptics.ImpactFeedbackStyle.Medium
+                    );
+                    router.push("/recargardinero");
+                  }}
+                >
+                  <Ionicons name="add" size={26} color="#fff" />
+                  <Text style={styles.actionText}>Recargar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Actividad reciente */}
+            <View style={styles.recentSection}>
+              <View style={styles.recentHeader}>
+                <Text style={styles.sectionTitle}>Actividad reciente</Text>
+                {transactions.length > 3 && (
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={onViewAllTransactions}
+                  >
+                    <Text style={styles.viewAll}>Ver todas</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          </>
+        }
+        ListEmptyComponent={
+          loading ? (
+            <ActivityIndicator
+              color="#fff"
+              style={{ marginTop: 20 }}
+              size="large"
             />
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons
+                name="wallet-outline"
+                size={64}
+                color="rgba(255,255,255,0.3)"
+              />
+              <Text style={styles.emptyTitle}>Sin actividad reciente</Text>
+              <Text style={styles.emptySubtitle}>
+                Tus transacciones aparecerán aquí
+              </Text>
+            </View>
+          )
+        }
+        ListFooterComponent={
+          transactions.length > 0 ? (
             <TouchableOpacity
               style={styles.fullHistoryButton}
               activeOpacity={0.8}
               onPress={onViewAllTransactions}
             >
-              <Text style={styles.fullHistoryText}>Ver historial completo</Text>
+              <Text style={styles.fullHistoryText}>
+                Ver historial completo
+              </Text>
               <Ionicons name="chevron-forward" size={16} color="#fff" />
             </TouchableOpacity>
-          </>
-        ) : (
-          <View style={styles.emptyState}>
-            <Ionicons
-              name="wallet-outline"
-              size={64}
-              color="rgba(255,255,255,0.3)"
-            />
-            <Text style={styles.emptyTitle}>Sin actividad reciente</Text>
-            <Text style={styles.emptySubtitle}>
-              Tus transacciones aparecerán aquí
-            </Text>
-          </View>
-        )}
-      </View>
+          ) : null
+        }
+        contentContainerStyle={{ paddingBottom: 24 }}
+      />
     </View>
   );
 }
 
 /* 🎨 Estilos */
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0b0b0b", paddingBottom: 24 },
+  container: { flex: 1, backgroundColor: "#0b0b0b" },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -355,7 +458,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   actionText: { color: "#fff", fontWeight: "700", marginLeft: 6 },
-  recentSection: { marginTop: 32, marginHorizontal: 20 },
+  recentSection: { marginTop: 32, marginHorizontal: 20, marginBottom: 12 },
   recentHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -370,6 +473,7 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 12,
     marginBottom: 10,
+    marginHorizontal: 20,
   },
   txIcon: {
     width: 40,
@@ -382,8 +486,13 @@ const styles = StyleSheet.create({
   txLabel: { color: "#fff", fontSize: 15, fontWeight: "600" },
   txDate: { color: "#9ca3af", fontSize: 12, marginTop: 2 },
   txAmount: { fontSize: 15, fontWeight: "700" },
-  emptyState: { alignItems: "center", paddingVertical: 40 },
-  emptyTitle: { color: "#fff", fontSize: 16, fontWeight: "700", marginTop: 12 },
+  emptyState: { alignItems: "center", paddingVertical: 40, marginHorizontal: 20 },
+  emptyTitle: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+    marginTop: 12,
+  },
   emptySubtitle: { color: "#9ca3af", fontSize: 14, marginTop: 4 },
   fullHistoryButton: {
     flexDirection: "row",
@@ -393,6 +502,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 12,
     marginTop: 12,
+    marginHorizontal: 20,
     gap: 8,
   },
   fullHistoryText: { color: "#fff", fontSize: 15, fontWeight: "600" },

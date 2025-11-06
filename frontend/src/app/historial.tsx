@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,52 +8,184 @@ import {
   useColorScheme,
   Pressable,
   TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter, Stack } from "expo-router";
 import Animated, { FadeInUp, FadeOut } from "react-native-reanimated";
+import { supabase } from "../lib/supabase";
 
 type Transaction = {
   id: string;
-  type: "recarga" | "envio" | "recibido";
-  label: string;
-  date: string;
-  amount: number;
+  type: "recarga" | "enviado" | "recibido";
+  cantidad: number;
+  created_at: string;
+  remitente_id: string;
+  receptor_id: string;
+  receptor_email?: string;
+  remitente_email?: string;
 };
-
-const mockData: Transaction[] = [
-  { id: "1", type: "recarga", label: "Recarga saldo", date: "12 Oct 2025", amount: 50 },
-  { id: "2", type: "envio", label: "Envío a Carlos", date: "11 Oct 2025", amount: -30 },
-  { id: "3", type: "recibido", label: "Recibido de Ana", date: "10 Oct 2025", amount: 25 },
-];
 
 export default function HistoryScreen() {
   const colorScheme = useColorScheme();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
-  const [transactions, setTransactions] = useState<Transaction[]>(mockData);
+  const [loading, setLoading] = useState(true);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
 
-  const onRefresh = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
+  // 🟢 Obtener usuario
+  const fetchUser = async () => {
+    const { data, error } = await supabase.auth.getUser();
+
+    if (error || !data.user) {
+      console.log("❌ No hay usuario autenticado");
+      return null;
+    }
+
+    const user = data.user;
+    console.log("🔐 Auth User Email:", user.email);
+
+    // Obtener ID del usuario desde la tabla users
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("email", user.email)
+      .single();
+
+    if (userError || !userData) {
+      console.log("❌ Error al obtener user ID:", userError);
+      return null;
+    }
+
+    console.log("🟢 User ID:", userData.id);
+    return userData.id;
+  };
+
+  // 🟡 Cargar todas las transacciones
+  const fetchTransactions = async (uid: string) => {
+    console.log("📊 Cargando historial completo para user ID:", uid);
+
+    const { data, error } = await supabase
+      .from("transactions")
+      .select("*")
+      .or(`remitente_id.eq.${uid},receptor_id.eq.${uid}`)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.log("❌ Error al obtener transacciones:", error.message);
+      return [];
+    }
+
+    console.log("📦 Total de transacciones:", data?.length || 0);
+
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    // Obtener emails de todos los usuarios involucrados
+    const userIds = new Set<string>();
+    data.forEach((tx) => {
+      if (tx.remitente_id) userIds.add(tx.remitente_id);
+      if (tx.receptor_id) userIds.add(tx.receptor_id);
+    });
+
+    const { data: usersData } = await supabase
+      .from("users")
+      .select("id, email")
+      .in("id", Array.from(userIds));
+
+    const userMap = new Map(usersData?.map((u) => [u.id, u.email]) || []);
+
+    // Formatear transacciones
+    const formatted: Transaction[] = data.map((tx) => {
+      let type: Transaction["type"] = "recarga";
+
+      if (tx.remitente_id === uid && tx.receptor_id !== uid) {
+        type = "enviado";
+      } else if (tx.receptor_id === uid && tx.remitente_id !== uid) {
+        type = "recibido";
+      } else if (tx.remitente_id === uid && tx.receptor_id === uid) {
+        type = "recarga";
+      }
+
+      return {
+        ...tx,
+        type,
+        remitente_email: userMap.get(tx.remitente_id),
+        receptor_email: userMap.get(tx.receptor_id),
+      };
+    });
+
+    console.log("✅ Transacciones formateadas:", formatted.length);
+    return formatted;
+  };
+
+  // 🚀 Cargar datos al montar
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      const uid = await fetchUser();
+      if (uid) {
+        setUserId(uid);
+        const txs = await fetchTransactions(uid);
+        setTransactions(txs);
+      }
+      setLoading(false);
+    };
+    loadData();
   }, []);
 
-  const renderItem = ({ item }: { item: Transaction }) => {
-    const color =
-      item.type === "recarga"
-        ? "#4CAF50"
-        : item.type === "envio"
-        ? "#E53935"
-        : "#2196F3";
+  // 🔄 Refrescar datos
+  const onRefresh = useCallback(async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setRefreshing(true);
+    if (userId) {
+      const txs = await fetchTransactions(userId);
+      setTransactions(txs);
+    }
+    setRefreshing(false);
+  }, [userId]);
 
-    const iconName =
-      item.type === "recarga"
-        ? "add"
-        : item.type === "envio"
-        ? "arrow-up"
-        : "arrow-down";
+  const renderItem = ({ item }: { item: Transaction }) => {
+    const isSend = item.type === "enviado";
+    const isReceive = item.type === "recibido";
+    const isTopUp = item.type === "recarga";
+
+    const color = isSend
+      ? "#E53935"
+      : isReceive
+      ? "#2196F3"
+      : "#4CAF50";
+
+    const bgColor = isSend
+      ? "rgba(229,57,53,0.15)"
+      : isReceive
+      ? "rgba(33,150,243,0.15)"
+      : "rgba(76,175,80,0.15)";
+
+    const iconName = isSend
+      ? "arrow-up"
+      : isReceive
+      ? "arrow-down"
+      : "add";
+
+    const date = new Date(item.created_at).toLocaleDateString("es-PE", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+
+    // Descripción
+    let label = "";
+    if (isSend) {
+      label = `Enviado a ${item.receptor_email || "Usuario"}`;
+    } else if (isReceive) {
+      label = `Recibido de ${item.remitente_email || "Usuario"}`;
+    } else {
+      label = "Recarga de saldo";
+    }
 
     return (
       <Animated.View entering={FadeInUp.delay(100).duration(300)} exiting={FadeOut}>
@@ -67,7 +199,7 @@ export default function HistoryScreen() {
             },
           ]}
         >
-          <View style={[styles.iconCircle, { backgroundColor: `${color}20` }]}>
+          <View style={[styles.iconCircle, { backgroundColor: bgColor }]}>
             <Ionicons name={iconName as any} size={20} color={color} />
           </View>
 
@@ -78,7 +210,7 @@ export default function HistoryScreen() {
                 { color: colorScheme === "dark" ? "#FFFFFF" : "#1A1A1A" },
               ]}
             >
-              {item.label}
+              {label}
             </Text>
             <Text
               style={[
@@ -86,32 +218,19 @@ export default function HistoryScreen() {
                 { color: colorScheme === "dark" ? "#BDBDBD" : "#757575" },
               ]}
             >
-              {item.date}
+              {date}
             </Text>
           </View>
 
-          <Text
-            style={[
-              styles.amount,
-              {
-                color:
-                  item.amount > 0
-                    ? "#4CAF50"
-                    : item.amount < 0
-                    ? "#E53935"
-                    : "#1A1A1A",
-              },
-            ]}
-          >
-            {item.amount > 0 ? "+" : ""}
-            S/ {item.amount}
+          <Text style={[styles.amount, { color }]}>
+            {isSend ? "-" : "+"}S/ {item.cantidad.toFixed(2)}
           </Text>
         </Pressable>
       </Animated.View>
     );
   };
 
-  const isEmpty = transactions.length === 0;
+  const isEmpty = transactions.length === 0 && !loading;
 
   return (
     <View
@@ -120,10 +239,9 @@ export default function HistoryScreen() {
         { backgroundColor: colorScheme === "dark" ? "#121212" : "#FFFFFF" },
       ]}
     >
-      {/* Ocultar header de Expo */}
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* Header con botón de regreso */}
+      {/* Header */}
       <View
         style={[
           styles.header,
@@ -141,7 +259,7 @@ export default function HistoryScreen() {
           activeOpacity={0.7}
           style={styles.backIconButton}
         >
-          <Ionicons name="chevron-back" size={24} color="#ffffffff" />
+          <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
 
         <Text
@@ -154,8 +272,20 @@ export default function HistoryScreen() {
         </Text>
       </View>
 
-      {/* Lista o estado vacío */}
-      {isEmpty ? (
+      {/* Contenido */}
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#4CAF50" />
+          <Text
+            style={[
+              styles.loadingText,
+              { color: colorScheme === "dark" ? "#BDBDBD" : "#757575" },
+            ]}
+          >
+            Cargando historial...
+          </Text>
+        </View>
+      ) : isEmpty ? (
         <View style={styles.emptyContainer}>
           <Ionicons name="time-outline" size={48} color="#BDBDBD" />
           <Text style={styles.emptyText}>Sin movimientos</Text>
@@ -206,6 +336,15 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "700",
   },
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+  },
   listContent: {
     paddingHorizontal: 20,
     paddingTop: 10,
@@ -232,9 +371,24 @@ const styles = StyleSheet.create({
   },
   textContainer: { flex: 1 },
   label: { fontSize: 16, fontWeight: "600" },
-  date: { fontSize: 13 },
+  date: { fontSize: 13, marginTop: 2 },
   amount: { fontSize: 16, fontWeight: "700" },
-  emptyContainer: { flex: 1, alignItems: "center", justifyContent: "center" },
-  emptyText: { marginTop: 10, fontSize: 18, color: "#757575", fontWeight: "600" },
-  emptySubText: { fontSize: 14, color: "#9E9E9E", marginTop: 4 },
+  emptyContainer: { 
+    flex: 1, 
+    alignItems: "center", 
+    justifyContent: "center",
+    paddingHorizontal: 40,
+  },
+  emptyText: { 
+    marginTop: 10, 
+    fontSize: 18, 
+    color: "#757575", 
+    fontWeight: "600" 
+  },
+  emptySubText: { 
+    fontSize: 14, 
+    color: "#9E9E9E", 
+    marginTop: 4,
+    textAlign: "center",
+  },
 });
