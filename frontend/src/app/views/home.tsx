@@ -36,6 +36,7 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string>("Usuario");
 
   // 🟢 Obtener usuario y saldo
   const fetchUserAndBalance = async () => {
@@ -52,10 +53,26 @@ export default function HomeScreen() {
     console.log("🔐 Auth User ID:", user.id);
     console.log("📧 Auth User Email:", user.email);
 
-    // 🟢 Obtener saldo usando el email
-    const { data: userData, error: userError } = await supabase
+
+  const checkProfileCompletion = async () => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data } = await supabase
+    .from("users")
+    .select("name, document_id, birth_date, address")
+    .eq("email", user.email)
+    .single();
+
+  // 👇 Si falta algo, redirigir
+  if (!data?.name || !data?.document_id || !data?.birth_date || !data?.address) {
+    router.replace( "../completarperfil)");
+  }
+};
+
+const { data: userData, error: userError } = await supabase
       .from("users")
-      .select("id, balance, email")
+      .select("id, balance, email, nombre")
       .eq("email", user.email)
       .single();
 
@@ -71,6 +88,16 @@ export default function HomeScreen() {
       console.log("⚠️ No se encontró usuario en la tabla users");
       setBalance(0);
     }
+    if (userData?.nombre) {
+  setDisplayName(userData.nombre);
+} else if (user.email) {
+  setDisplayName(
+    user.email
+      .split("@")[0]
+      .replace(/[._\-]/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase())
+  );
+}
   };
 
   // 🟡 Cargar transacciones
@@ -151,14 +178,51 @@ export default function HomeScreen() {
     setTransactions(formatted);
   };
 
+  const checkProfileCompletion = async () => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data } = await supabase
+    .from("users")
+    .select("name, document_id, birth_date, address")
+    .eq("email", user.email)
+    .single();
+
+  if (!data?.name || !data?.document_id || !data?.birth_date || !data?.address) {
+    router.replace("../completarperfil");
+  }
+};
+
   useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      await fetchUserAndBalance();
+  const loadData = async () => {
+    setLoading(true);
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
       setLoading(false);
-    };
-    loadData();
-  }, []);
+      return;
+    }
+
+    const { data } = await supabase
+      .from("users")
+      .select("nombre, document_id, birth_date, direccion")
+      .eq("email", user.email) // 👈 Mejor por email
+      .single();
+
+    console.log("🔍 Datos del perfil:", data);
+
+    if (!data?.nombre || !data?.document_id || !data?.birth_date || !data?.direccion) {
+      console.log("⚠️ Perfil incompleto → Redirigiendo");
+      router.replace("/completarperfil"); // 👈 ESTA ES LA CORRECTA
+      return;
+    }
+
+    await fetchUserAndBalance();
+    setLoading(false);
+  };
+
+  loadData();
+}, []);
 
   useEffect(() => {
     if (userId) {
@@ -245,14 +309,6 @@ export default function HomeScreen() {
       </Animated.View>
     );
   };
-
-  // 🧑 Mostrar nombre derivado del correo
-  const displayName = userEmail
-    ? userEmail
-        .split("@")[0]
-        .replace(/[._\-]/g, " ")
-        .replace(/\b\w/g, (c) => c.toUpperCase())
-    : "Usuario";
 
   return (
     <View style={styles.container}>

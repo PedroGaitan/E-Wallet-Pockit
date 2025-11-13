@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -6,54 +6,125 @@ import {
   Pressable,
   useColorScheme,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import Animated, { FadeInUp } from "react-native-reanimated";
-import { supabase } from "@/src/lib/supabase"; // Asegúrate de que la ruta coincida
+import { supabase } from "../../lib/supabase";
 
 export default function PerfilScreen() {
   const colorScheme = useColorScheme();
   const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [userEmail, setUserEmail] = useState<string>("");
+  const [userName, setUserName] = useState<string>("");
 
-  // Datos de usuario simulados
-  const user = {
-    name: "Juan Pérez",
-    email: "juanperez@example.com",
-  };
+  // 🟢 Cargar datos del usuario desde Supabase
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        // Obtener usuario autenticado
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-  // Generar iniciales
-  const initials = user.name
+        if (authError || !user) {
+          console.log("❌ No hay usuario autenticado");
+          router.replace("/auth/login");
+          return;
+        }
+
+        console.log("🔐 Usuario autenticado:", user.email);
+        setUserEmail(user.email || "");
+
+        const { data: userData, error: userError } = await supabase
+  .from("users")
+  .select("nombre")
+  .eq("email", user.email)
+  .single();
+
+if (!userError && userData?.nombre) {
+  setUserName(userData.nombre);
+} else {
+
+  const emailName = user.email?.split("@")[0] || "Usuario";
+  const formattedName = emailName
+    .replace(/[._\-]/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+
+  setUserName(formattedName);
+}
+
+      } catch (err) {
+        console.error("❌ Error al cargar datos:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUserData();
+  }, []);
+
+  // Generar iniciales del nombre
+  const initials = userName
     .split(" ")
     .map((n) => n[0])
     .join("")
     .slice(0, 2)
-    .toUpperCase();
+    .toUpperCase() || "U";
 
   const handleOptionPress = (action: string) => {
-    Haptics.selectionAsync();
-    if (action === "ajustes") router.push("/ajustes");
-  };
+  Haptics.selectionAsync();
+
+  if (action === "ajustes") router.push("/ajustes");
+  if (action === "Informacion Personal") router.push("/informacionpersonal");
+};
 
   const handleLogout = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
 
     try {
-      await supabase.auth.signOut(); // 🔒 cerrar sesión
-      router.replace("/auth/login"); // 🚀 redirigir al login
+      console.log("🚪 Cerrando sesión...");
+      await supabase.auth.signOut();
+      router.replace("/auth/login");
     } catch (error) {
-      console.error("Error al cerrar sesión:", error);
+      console.error("❌ Error al cerrar sesión:", error);
     }
   };
 
   const menuOptions = [
-    { icon: "person-outline", label: "Información personal" },
+    { icon: "person-outline", label: "Información personal", action: "Informacion Personal" },
     { icon: "shield-outline", label: "Seguridad" },
     { icon: "notifications-outline", label: "Notificaciones" },
     { icon: "settings-outline", label: "Ajustes", action: "ajustes" },
     { icon: "call-outline", label: "Soporte" },
   ];
+
+  // Mostrar loading mientras carga
+  if (loading) {
+    return (
+      <View
+        style={[
+          styles.container,
+          {
+            backgroundColor: colorScheme === "dark" ? "#121212" : "#FFFFFF",
+            justifyContent: "center",
+            alignItems: "center",
+          },
+        ]}
+      >
+        <ActivityIndicator size="large" color="#4CAF50" />
+        <Text
+          style={[
+            styles.loadingText,
+            { color: colorScheme === "dark" ? "#9E9E9E" : "#757575" },
+          ]}
+        >
+          Cargando perfil...
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView
@@ -85,11 +156,11 @@ export default function PerfilScreen() {
             { color: colorScheme === "dark" ? "#FFFFFF" : "#1A1A1A" },
           ]}
         >
-          {user.name}
+          {userName}
         </Text>
         <View style={styles.emailRow}>
           <Ionicons name="mail-outline" size={16} color="#9E9E9E" />
-          <Text style={styles.email}>{user.email}</Text>
+          <Text style={styles.email}>{userEmail}</Text>
         </View>
       </Animated.View>
 
@@ -162,6 +233,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+  },
   userCard: {
     alignItems: "center",
     paddingVertical: 40,
@@ -184,11 +259,11 @@ const styles = StyleSheet.create({
   avatarText: {
     color: "#FFFFFF",
     fontSize: 32,
-    fontFamily: "Poppins-Bold",
+    fontWeight: "700",
   },
   userName: {
     fontSize: 20,
-    fontFamily: "Poppins-SemiBold",
+    fontWeight: "600",
   },
   emailRow: {
     flexDirection: "row",
@@ -199,14 +274,13 @@ const styles = StyleSheet.create({
     marginLeft: 6,
     fontSize: 14,
     color: "#9E9E9E",
-    fontFamily: "Poppins-Regular",
   },
   menuContainer: {
     marginTop: 30,
     marginHorizontal: 20,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "rgba(0,0,0,0.1)",
   },
   menuItem: {
     flexDirection: "row",
@@ -222,7 +296,7 @@ const styles = StyleSheet.create({
   menuLabel: {
     fontSize: 16,
     marginLeft: 12,
-    fontFamily: "Poppins-Medium",
+    fontWeight: "500",
   },
   logoutContainer: {
     marginTop: 30,
@@ -236,13 +310,12 @@ const styles = StyleSheet.create({
   logoutText: {
     color: "#E53935",
     fontSize: 16,
-    fontFamily: "Poppins-SemiBold",
+    fontWeight: "600",
   },
   versionText: {
     marginTop: 30,
     textAlign: "center",
     color: "#9E9E9E",
     fontSize: 13,
-    fontFamily: "Poppins-Regular",
   },
 });

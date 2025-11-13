@@ -13,7 +13,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
+import { useRouter, Stack } from "expo-router";
 
 const STORAGE_KEYS = {
   THEME: "Pockit:theme",
@@ -94,6 +94,9 @@ export default function SettingsScreen() {
           { borderColor: selected ? "#3B82F6" : "transparent", opacity: pressed ? 0.8 : 1 },
         ]}
       >
+
+      <Stack.Screen options={{ headerShown: false }} />
+
         <View style={styles.previewWrap}>
           <LinearGradient colors={item.colors} style={styles.previewGradient} />
         </View>
