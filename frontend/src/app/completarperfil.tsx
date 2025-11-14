@@ -157,6 +157,8 @@ export default function CompleteProfile() {
           value={new Date()}
           mode="date"
           display="calendar"
+          maximumDate={new Date()}
+          minimumDate={new Date(1950, 0, 1)}
           onChange={(event, selectedDate) => {
             setShowPicker(false);
             if (selectedDate) {

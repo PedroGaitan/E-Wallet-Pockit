@@ -23,8 +23,8 @@ type Transaction = {
   created_at: string;
   remitente_id: string;
   receptor_id: string;
-  receptor_email?: string;
-  remitente_email?: string;
+  receptor_nombre?: string;
+  remitente_nombre?: string;
 };
 
 export default function HistoryScreen() {
@@ -93,10 +93,10 @@ export default function HistoryScreen() {
 
     const { data: usersData } = await supabase
       .from("users")
-      .select("id, email")
+      .select("id, nombre")
       .in("id", Array.from(userIds));
 
-    const userMap = new Map(usersData?.map((u) => [u.id, u.email]) || []);
+    const userMap = new Map(usersData?.map((u) => [u.id, u.nombre]) || []);
 
     // Formatear transacciones
     const formatted: Transaction[] = data.map((tx) => {
@@ -113,8 +113,8 @@ export default function HistoryScreen() {
       return {
         ...tx,
         type,
-        remitente_email: userMap.get(tx.remitente_id),
-        receptor_email: userMap.get(tx.receptor_id),
+        remitente_nombre: userMap.get(tx.remitente_id),
+        receptor_nombre: userMap.get(tx.receptor_id),
       };
     });
 
@@ -180,9 +180,9 @@ export default function HistoryScreen() {
     // Descripción
     let label = "";
     if (isSend) {
-      label = `Enviado a ${item.receptor_email || "Usuario"}`;
+      label = `Enviado a ${item.receptor_nombre || "Usuario"}`;
     } else if (isReceive) {
-      label = `Recibido de ${item.remitente_email || "Usuario"}`;
+      label = `Recibido de ${item.remitente_nombre || "Usuario"}`;
     } else {
       label = "Recarga de saldo";
     }

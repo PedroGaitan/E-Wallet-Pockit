@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -12,84 +12,47 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import Animated, { FadeInUp } from "react-native-reanimated";
+import { useAuth } from "@/src/providers/auth-provider";
 import { supabase } from "../../lib/supabase";
 
 export default function PerfilScreen() {
   const colorScheme = useColorScheme();
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [userEmail, setUserEmail] = useState<string>("");
-  const [userName, setUserName] = useState<string>("");
 
-  // 🟢 Cargar datos del usuario desde Supabase
-  useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        // Obtener usuario autenticado
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
+  // 💚 Datos 100% realtime desde el AuthProvider
+  const { user, mounting } = useAuth();
 
-        if (authError || !user) {
-          console.log("❌ No hay usuario autenticado");
-          router.replace("/auth/login");
-          return;
-        }
+  if (mounting || !user) {
+    console.log("Perfil → mounting:", mounting);
+console.log("Perfil → user:", user);
 
-        console.log("🔐 Usuario autenticado:", user.email);
-        setUserEmail(user.email || "");
-
-        const { data: userData, error: userError } = await supabase
-  .from("users")
-  .select("nombre")
-  .eq("email", user.email)
-  .single();
-
-if (!userError && userData?.nombre) {
-  setUserName(userData.nombre);
-} else {
-
-  const emailName = user.email?.split("@")[0] || "Usuario";
-  const formattedName = emailName
-    .replace(/[._\-]/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-
-  setUserName(formattedName);
-}
-
-      } catch (err) {
-        console.error("❌ Error al cargar datos:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadUserData();
-  }, []);
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#4CAF50" />
+        <Text style={{ marginTop: 10 }}>Cargando perfil...</Text>
+      </View>
+    );
+  }
 
   // Generar iniciales del nombre
-  const initials = userName
-    .split(" ")
+  const initials = user.nombre
+    ?.split(" ")
     .map((n) => n[0])
     .join("")
     .slice(0, 2)
-    .toUpperCase() || "U";
+    .toUpperCase();
 
   const handleOptionPress = (action: string) => {
-  Haptics.selectionAsync();
+    Haptics.selectionAsync();
 
-  if (action === "ajustes") router.push("/ajustes");
-  if (action === "Informacion Personal") router.push("/informacionpersonal");
-};
+    if (action === "ajustes") router.push("/ajustes");
+    if (action === "Informacion Personal") router.push("/informacionpersonal");
+  };
 
   const handleLogout = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-
-    try {
-      console.log("🚪 Cerrando sesión...");
-      await supabase.auth.signOut();
-      router.replace("/auth/login");
-    } catch (error) {
-      console.error("❌ Error al cerrar sesión:", error);
-    }
+    await supabase.auth.signOut();
+    router.replace("/auth/login");
   };
 
   const menuOptions = [
@@ -100,77 +63,46 @@ if (!userError && userData?.nombre) {
     { icon: "call-outline", label: "Soporte" },
   ];
 
-  // Mostrar loading mientras carga
-  if (loading) {
-    return (
-      <View
-        style={[
-          styles.container,
-          {
-            backgroundColor: colorScheme === "dark" ? "#121212" : "#FFFFFF",
-            justifyContent: "center",
-            alignItems: "center",
-          },
-        ]}
-      >
-        <ActivityIndicator size="large" color="#4CAF50" />
-        <Text
-          style={[
-            styles.loadingText,
-            { color: colorScheme === "dark" ? "#9E9E9E" : "#757575" },
-          ]}
-        >
-          Cargando perfil...
-        </Text>
-      </View>
-    );
-  }
-
   return (
     <ScrollView
       style={[
         styles.container,
-        {
-          backgroundColor: colorScheme === "dark" ? "#121212" : "#FFFFFF",
-        },
+        { backgroundColor: colorScheme === "dark" ? "#121212" : "#FFFFFF" },
       ]}
       contentContainerStyle={{ paddingBottom: 40 }}
       showsVerticalScrollIndicator={false}
     >
-      {/* Tarjeta de usuario */}
+      {/* Tarjeta del usuario */}
       <Animated.View
         entering={FadeInUp.duration(400)}
         style={[
           styles.userCard,
-          {
-            backgroundColor: colorScheme === "dark" ? "#1E1E1E" : "#FAFAFA",
-          },
+          { backgroundColor: colorScheme === "dark" ? "#1E1E1E" : "#FAFAFA" },
         ]}
       >
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{initials}</Text>
         </View>
+
         <Text
           style={[
             styles.userName,
             { color: colorScheme === "dark" ? "#FFFFFF" : "#1A1A1A" },
           ]}
         >
-          {userName}
+          {user.nombre}
         </Text>
+
         <View style={styles.emailRow}>
           <Ionicons name="mail-outline" size={16} color="#9E9E9E" />
-          <Text style={styles.email}>{userEmail}</Text>
+          <Text style={styles.email}>{user.email}</Text>
         </View>
       </Animated.View>
 
       {/* Opciones de menú */}
       <View style={styles.menuContainer}>
         {menuOptions.map((item, index) => (
-          <Animated.View
-            key={item.label}
-            entering={FadeInUp.delay(index * 80)}
-          >
+          <Animated.View key={item.label} entering={FadeInUp.delay(index * 80)}>
             <Pressable
               onPress={() => handleOptionPress(item.action || "")}
               style={({ pressed }) => [
@@ -209,7 +141,6 @@ if (!userError && userData?.nombre) {
         ))}
       </View>
 
-      {/* Botón cerrar sesión */}
       <View style={styles.logoutContainer}>
         <Pressable
           onPress={handleLogout}
@@ -223,7 +154,6 @@ if (!userError && userData?.nombre) {
         </Pressable>
       </View>
 
-      {/* Versión */}
       <Text style={styles.versionText}>Pockit v1.0.0</Text>
     </ScrollView>
   );

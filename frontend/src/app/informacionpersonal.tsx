@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -14,39 +14,123 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Stack, useRouter } from "expo-router";
+import { supabase } from "../lib/supabase";
+import {useAuth } from "../providers/auth-provider";
 
 export default function PersonalInfoScreen() {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
 
   const [userInfo, setUserInfo] = useState({
-    fullName: "Juan Pérez García",
-    email: "juan.perez@email.com",
-    phone: "+52 55 1234 5678",
-    address: "Av. Insurgentes Sur 123, Col. Roma Norte, CDMX",
+    fullName: "",
+    email: "",
+    phone: "",
+    address: "",
+    birthDate: "",
+    dni: "",
   });
+
+  useEffect(() => {
+    loadUserData();
+  }, []);
+
+  async function loadUserData() {
+    const { data: session } = await supabase.auth.getUser();
+    if (!session?.user) return;
+
+    const userEmail = session.user.email;
+
+    const { data, error } = await supabase
+      .from("users")
+      .select("nombre, email, telefono, direccion, birth_date, document_id")
+      .eq("email", userEmail)
+      .single();
+
+    if (error) {
+      Alert.alert("Error", "No se pudo cargar la información del usuario");
+      return;
+    }
+
+    setUserInfo({
+      fullName: data.nombre || "",
+      email: data.email || "",
+      phone: data.telefono || "",
+      address: data.direccion || "",
+      birthDate: data.birth_date || "",
+      dni: data.document_id || "",
+    });
+  }
 
   const showToast = (msg: string) => {
     if (Platform.OS === "android") ToastAndroid.show(msg, ToastAndroid.SHORT);
     else Alert.alert(msg);
   };
+  
+  const [errors, setErrors] = useState({
+    phone: "",
+  });
 
-  function handleSave() {
+  function handleTextWithoutSpecials(text: string) {
+  const regex = /^[a-zA-Z0-9ÁÉÍÓÚáéíóúñÑ ]*$/;
+  return regex.test(text);
+}
+
+function validatePhone(phone: string) {
+  if (!/^[0-9]*$/.test(phone)) {
+    return "Solo se permiten números.";
+  }
+  if (phone.length !== 9) {
+    return "El teléfono debe tener exactamente 9 dígitos.";
+  }
+  return "";
+}
+
+  async function handleSave() {
+    const { data: session } = await supabase.auth.getUser();
+    if (!session?.user) return;
+
+    if (errors.phone) {
+      showToast("Corrige los errores antes de guardar.");
+      return;
+    }
+
+    if (userInfo.phone.length !== 9) {
+      showToast("El teléfono debe tener 9 dígitos.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("users")
+      .update({
+        nombre: userInfo.fullName,
+        telefono: userInfo.phone,
+        direccion: userInfo.address,
+      })
+      .eq("email", session.user.email);
+
+    if (error) {
+      Alert.alert("Error", "No se pudo actualizar");
+      return;
+    }
+
     setIsEditing(false);
     showToast("Información actualizada correctamente");
   }
 
   function handleCancel() {
     setIsEditing(false);
+    loadUserData(); // recargar datos originales
+  }
+
+  function getInitials(name: string) {
+    const p = name.trim().split(" ");
+    return (p[0]?.[0] + (p[1]?.[0] ?? "")).toUpperCase();
   }
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.select({ ios: "padding" })}>
       <Stack.Screen options={{ headerShown: false }} />
-      <ScrollView
-        style={{ flex: 1, backgroundColor: "#fff" }}
-        contentContainerStyle={{ paddingBottom: 40 }}
-      >
+      <ScrollView style={{ flex: 1, backgroundColor: "#fff" }} contentContainerStyle={{ paddingBottom: 40 }}>
 
         {/* Header */}
         <View style={styles.header}>
@@ -65,41 +149,81 @@ export default function PersonalInfoScreen() {
           <Text style={styles.email}>{userInfo.email}</Text>
         </View>
 
-        {/* Card */}
+        {/* CARD */}
         <View style={styles.card}>
+
+          {/* Nombre */}
           <Text style={styles.label}>Nombre completo</Text>
           <TextInput
             editable={isEditing}
             value={userInfo.fullName}
-            onChangeText={(v) => setUserInfo({ ...userInfo, fullName: v })}
+            onChangeText={(v) =>{if (handleTextWithoutSpecials(v)) 
+            {setUserInfo({ ...userInfo, fullName: v });}}}
             style={[styles.input, !isEditing && styles.inputDisabled]}
           />
 
+          {/* Email (bloqueado siempre) */}
+          <Text style={[styles.label, { marginTop: 14 }]}>Correo electrónico</Text>
+          <TextInput
+            editable={false}
+            value={userInfo.email}
+            style={[styles.input, styles.inputDisabledDark]}
+          />
+          <Text style={styles.helperText}>Contacta a soporte para cambiar</Text>
+
+          {/* Teléfono */}
           <Text style={[styles.label, { marginTop: 14 }]}>Teléfono</Text>
           <TextInput
             editable={isEditing}
             value={userInfo.phone}
-            onChangeText={(v) => setUserInfo({ ...userInfo, phone: v })}
-            keyboardType="phone-pad"
-            style={[styles.input, !isEditing && styles.inputDisabled]}
+            keyboardType="numeric"
+            onChangeText={(v) => { 
+              setUserInfo({ ...userInfo, phone: v });
+              setErrors({...errors, phone: validatePhone(v) });
+            }}
+            style={[styles.input, !isEditing && styles.inputDisabled,
+              errors.phone ? { borderColor: "red"} : {}
+            ]}
           />
+          {errors.phone ? (
+            <Text style={{ color: "red", marginTop: 6, marginLeft: 4 }}>{errors.phone}</Text>
+          ) :null}
 
+          {/* Dirección */}
           <Text style={[styles.label, { marginTop: 14 }]}>Dirección</Text>
           <TextInput
             editable={isEditing}
+            multiline
             value={userInfo.address}
-            onChangeText={(v) => setUserInfo({ ...userInfo, address: v })}
-            multiline={true}
-            numberOfLines={2}
-            style={[
-              styles.input,
-              styles.textArea,
-              !isEditing && styles.inputDisabled
-            ]}
+            onChangeText={(v) => { 
+              if (handleTextWithoutSpecials(v)) { 
+                setUserInfo({ ...userInfo, address: v });
+              }
+            }}
+            style={[styles.input, styles.textArea, !isEditing && styles.inputDisabled]}
           />
+
+          {/* Fecha de nacimiento (bloqueado) */}
+          <Text style={[styles.label, { marginTop: 14 }]}>Fecha de nacimiento</Text>
+          <TextInput
+            editable={false}
+            value={userInfo.birthDate}
+            style={[styles.input, styles.inputDisabledDark]}
+          />
+          <Text style={styles.helperText}>Contacta a soporte para cambiar</Text>
+
+          {/* DNI (bloqueado) */}
+          <Text style={[styles.label, { marginTop: 14 }]}>DNI</Text>
+          <TextInput
+            editable={false}
+            value={userInfo.dni}
+            style={[styles.input, styles.inputDisabledDark]}
+          />
+          <Text style={styles.helperText}>Contacta a soporte para cambiar</Text>
+
         </View>
 
-        {/* Buttons */}
+        {/* BOTONES */}
         <View style={{ marginTop: 30, marginHorizontal: 20 }}>
           {!isEditing ? (
             <TouchableOpacity onPress={() => setIsEditing(true)}>
@@ -126,13 +250,6 @@ export default function PersonalInfoScreen() {
     </KeyboardAvoidingView>
   );
 }
-
-function getInitials(name: string) {
-  const p = name.trim().split(" ");
-  return (p[0][0] + (p[1]?.[0] ?? "")).toUpperCase();
-}
-
-/* -------- STYLES -------- */
 
 const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", padding: 20 },
@@ -168,6 +285,12 @@ const styles = StyleSheet.create({
     color: "#111",
   },
   inputDisabled: { backgroundColor: "#f1f5f9" },
+  inputDisabledDark: { backgroundColor: "#e5e7eb" },
+  helperText: {
+    fontSize: 12,
+    color: "#6b7280",
+    marginTop: 4,
+  },
   textArea: { minHeight: 60 },
 
   primaryBtn: {
