@@ -21,11 +21,13 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../lib/supabase";
+import { useTheme } from "../context/ThemeContext";
 
 const PRESET_AMOUNTS = [50, 100, 200, 300, 500, 1000];
 
 export default function RechargeScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
   const [balance, setBalance] = useState<number>(0);
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [amount, setAmount] = useState<string>("");
@@ -176,13 +178,13 @@ export default function RechargeScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
+      style={{ flex: 1, backgroundColor: theme.background }}
       behavior={Platform.select({ ios: "padding", android: undefined })}
     >
       <Stack.Screen options={{ headerShown: false }} />
 
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: theme.background }]}>
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity
@@ -191,18 +193,17 @@ export default function RechargeScreen() {
                 router.back();
               }}
               activeOpacity={0.7}
-              style={styles.backButton}
+              style={[styles.backButton, { backgroundColor: theme.card }]}
             >
-              <Ionicons name="chevron-back" size={24} color="#1e3a8a" />
+              <Ionicons name="chevron-back" size={24} color={theme.text} />
             </TouchableOpacity>
-
-            <Text style={styles.pageTitle}>Recargar dinero</Text>
+              <Text style={[styles.pageTitle, { color: theme.text }]}>Recargar dinero</Text>
           </View>
 
           {/* Saldo actual */}
-          <View style={styles.balanceCard}>
-            <Text style={styles.balanceLabel}>Saldo actual</Text>
-            <Text style={styles.balanceValue}>
+          <View style={[styles.balanceCard, { backgroundColor: theme.card }]}>
+            <Text style={[styles.balanceLabel, { color: theme.subText }]}>Saldo actual</Text>
+             <Text style={[styles.balanceValue, { color: theme.text }]}>
               S/.{balance.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
             </Text>
           </View>
@@ -216,7 +217,8 @@ export default function RechargeScreen() {
                   key={value}
                   style={[
                     styles.amountBox,
-                    isSelected && styles.amountBoxSelected,
+                    { backgroundColor: theme.card, borderColor: theme.border },
+                    isSelected && { backgroundColor: "#eef2ff", borderColor: "#2563eb" }
                   ]}
                   onPress={() => handlePresetPress(value)}
                   activeOpacity={0.9}
@@ -225,6 +227,7 @@ export default function RechargeScreen() {
                   <Text
                     style={[
                       styles.amountText,
+                      { color: theme.text },
                       isSelected && styles.amountTextSelected,
                     ]}
                   >
@@ -236,18 +239,18 @@ export default function RechargeScreen() {
           </View>
 
           {/* Input personalizado */}
-          <Text style={styles.label}>Otro monto</Text>
+          <Text style={[styles.label, { color: theme.text }]}>Otro monto</Text>
           <TextInput
             value={amount}
             onChangeText={handleAmountChange}
             placeholder="Ingresa monto"
             keyboardType="number-pad"
             editable={!loading}
-            style={styles.input}
+            style={[styles.input, { backgroundColor: theme.text, color: theme.card }]}
           />
 
           {/* Método de pago */}
-          <View style={styles.cardContainer}>
+          <View style={[styles.cardContainer, { backgroundColor: theme.card }]}>
             <LinearGradient
               colors={["#1e40af", "#2563eb"]}
               start={[0, 0]}
@@ -256,14 +259,14 @@ export default function RechargeScreen() {
             >
               <Ionicons name="card-outline" size={28} color="#fff" />
             </LinearGradient>
-            <Text style={styles.cardText}>•••• 4829</Text>
+             <Text style={[styles.cardText, { color: theme.text }]}>•••• 4829</Text>
           </View>
 
           {/* Resumen animado */}
           {(selectedAmount || parseFloat(amount) > 0) && (
             <Animated.View
               style={[
-                styles.summaryContainer,
+                styles.summaryContainer,{ backgroundColor: theme.card, borderColor: theme.border },
                 {
                   transform: [{ translateY: slideAnim }],
                   opacity: fadeAnim,
@@ -271,19 +274,19 @@ export default function RechargeScreen() {
               ]}
             >
               <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Monto</Text>
-                <Text style={styles.summaryValue}>S/.{total.toFixed(2)}</Text>
+                <Text style={[styles.summaryLabel, { color: theme.subText }]}>Monto</Text>
+                <Text style={[styles.summaryValue, { color: theme.text }]}>S/.{total.toFixed(2)}</Text>
               </View>
               <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Comisión</Text>
-                <Text style={styles.summaryValue}>S/.0.00</Text>
+                <Text style={[styles.summaryLabel, { color: theme.subText }]}>Comisión</Text>
+                <Text style={[styles.summaryValue, { color: theme.text }]}>S/.0.00</Text>
               </View>
               <View style={styles.separator} />
               <View style={styles.summaryRow}>
-                <Text style={[styles.summaryLabel, { fontWeight: "700" }]}>
+               <Text style={[styles.summaryLabel, { color: theme.text, fontWeight: "700" }]}>
                   Total
                 </Text>
-                <Text style={[styles.summaryValue, { fontWeight: "700" }]}>
+                <Text style={[styles.summaryValue, { color: theme.text, fontWeight: "700" }]}>
                   S/.{total.toFixed(2)}
                 </Text>
               </View>

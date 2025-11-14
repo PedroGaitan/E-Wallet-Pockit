@@ -1,14 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  FlatList,
-  StyleSheet,
-  Platform,
-  ActivityIndicator,
-  RefreshControl,
-} from "react-native";
+import {View,Text,TouchableOpacity,FlatList,StyleSheet,Platform,ActivityIndicator,RefreshControl,} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
@@ -16,6 +7,7 @@ import { useRouter } from "expo-router";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../providers/auth-provider";
+import { useTheme } from "../../context/ThemeContext";
 
 type Transaction = {
   id: string;
@@ -30,14 +22,15 @@ type Transaction = {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { user } = useAuth(); // ⚡ ahora todo viene limpio y realtime
+  const { user } = useAuth(); 
   const [showBalance, setShowBalance] = useState(true);
   const [balance, setBalance] = useState<number | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const { theme } = useTheme();
 
-  const userId = user?.id ?? null; // ⚡ ya no guardamos estados duplicados
+  const userId = user?.id ?? null; 
 
   // 🟢 Cargar saldo
   const fetchBalance = useCallback(async () => {
@@ -54,7 +47,7 @@ export default function HomeScreen() {
     }
   }, [user]);
 
-  // 🟡 Cargar transacciones con NOMBRE, no email
+  // 🟡 Cargar transacciones
   const fetchTransactions = useCallback(async () => {
     if (!userId) return;
 
@@ -192,7 +185,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <FlatList
         data={transactions.slice(0, 3)}
         keyExtractor={(i) => i.id}
@@ -203,28 +196,28 @@ export default function HomeScreen() {
         ListHeaderComponent={
           <>
             {/* Header */}
-            <LinearGradient colors={["#0f172a", "#1e293b"]} start={[0, 0]} end={[1, 1]} style={styles.header}>
+            <LinearGradient colors={[theme.card, theme.background]} start={[0, 0]} end={[1, 1]} style={styles.header}>
               <View>
-                <Text style={styles.welcomeText}>Bienvenido,</Text>
-                <Text style={styles.username}>{user?.nombre ?? "Usuario"}</Text>
+                <Text style={[styles.welcomeText, { color: theme.text }]}>Bienvenido,</Text>
+                <Text style={[styles.username, { color: theme.text }]}>{user?.nombre ?? "Usuario"}</Text>
               </View>
               <TouchableOpacity style={styles.eyeButton} onPress={toggleBalance}>
-                <Ionicons name={showBalance ? "eye" : "eye-off"} size={24} color="#fff" />
+                <Ionicons name={showBalance ? "eye" : "eye-off"} size={24} color={theme.text} />
               </TouchableOpacity>
             </LinearGradient>
 
             {/* Balance */}
             <LinearGradient
-              colors={["#1e1e1e", "#2d2d2d"]}
+              colors={[theme.card, theme.card]}
               start={[0, 0]}
               end={[1, 1]}
               style={styles.balanceCard}
             >
-              <Text style={styles.balanceLabel}>Saldo disponible</Text>
+              <Text style={[styles.balanceLabel, { color: theme.text }]}>Saldo disponible</Text>
               {loading ? (
-                <ActivityIndicator color="#fff" style={{ marginTop: 10 }} />
+                <ActivityIndicator color={theme.text} style={{ marginTop: 10 }} />
               ) : (
-                <Text style={styles.balanceValue}>
+                <Text style={[styles.balanceValue, { color: theme.text }]}>
                   {showBalance ? `S/. ${balance?.toFixed(2)}` : "S/.•••••"}
                 </Text>
               )}
@@ -232,7 +225,7 @@ export default function HomeScreen() {
 
             {/* Acciones */}
             <View style={styles.actionsSection}>
-              <Text style={styles.sectionTitle}>Acciones rápidas</Text>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Acciones rápidas</Text>
 
               <View style={styles.actionRow}>
                 <TouchableOpacity
@@ -255,7 +248,7 @@ export default function HomeScreen() {
 
             <View style={styles.recentSection}>
               <View style={styles.recentHeader}>
-                <Text style={styles.sectionTitle}>Actividad reciente</Text>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>Actividad reciente</Text>
 
                 {transactions.length > 3 && (
                   <TouchableOpacity onPress={onViewAllTransactions}>
@@ -271,9 +264,8 @@ export default function HomeScreen() {
   );
 }
 
-/* 🎨 Estilos (NO LOS TOQUÉ) */
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0b0b0b" },
+  container: { flex: 1 },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -283,8 +275,8 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
   },
-  welcomeText: { color: "#9ca3af", fontSize: 14 },
-  username: { color: "#fff", fontSize: 20, fontWeight: "700" },
+  welcomeText: { fontSize: 14 },
+  username: { fontSize: 20, fontWeight: "700" },
   eyeButton: { backgroundColor: "rgba(255,255,255,0.1)", padding: 8, borderRadius: 50 },
   balanceCard: {
     marginHorizontal: 20,
@@ -293,15 +285,16 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: "center",
   },
-  balanceLabel: { color: "#a1a1aa", fontSize: 14 },
-  balanceValue: { color: "#fff", fontSize: 30, fontWeight: "800", marginTop: 6 },
+  balanceLabel: { fontSize: 14 },
+  balanceValue: { fontSize: 30, fontWeight: "800", marginTop: 6 },
   actionsSection: { marginTop: 28, marginHorizontal: 20 },
-  sectionTitle: { color: "#fff", fontSize: 16, fontWeight: "700", marginBottom: 12 },
+  sectionTitle: { fontSize: 16, fontWeight: "700", marginBottom: 12 },
   actionRow: { flexDirection: "row", justifyContent: "space-between" },
   actionButton: {
     flex: 1,
     flexDirection: "row",
     justifyContent: "center",
+    alignItems: "center",
     backgroundColor: "#2563eb",
     paddingVertical: 14,
     marginHorizontal: 6,

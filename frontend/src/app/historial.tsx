@@ -1,20 +1,11 @@
 import React, { useCallback, useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  FlatList,
-  StyleSheet,
-  RefreshControl,
-  useColorScheme,
-  Pressable,
-  TouchableOpacity,
-  ActivityIndicator,
-} from "react-native";
+import {View,Text,FlatList,StyleSheet,RefreshControl,useColorScheme,Pressable,TouchableOpacity,ActivityIndicator,} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter, Stack } from "expo-router";
 import Animated, { FadeInUp, FadeOut } from "react-native-reanimated";
 import { supabase } from "../lib/supabase";
+import { useTheme } from "../context/ThemeContext";
 
 type Transaction = {
   id: string;
@@ -30,6 +21,7 @@ type Transaction = {
 export default function HistoryScreen() {
   const colorScheme = useColorScheme();
   const router = useRouter();
+  const { theme } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -40,12 +32,10 @@ export default function HistoryScreen() {
     const { data, error } = await supabase.auth.getUser();
 
     if (error || !data.user) {
-      console.log("❌ No hay usuario autenticado");
       return null;
     }
 
     const user = data.user;
-    console.log("🔐 Auth User Email:", user.email);
 
     // Obtener ID del usuario desde la tabla users
     const { data: userData, error: userError } = await supabase
@@ -65,8 +55,6 @@ export default function HistoryScreen() {
 
   // 🟡 Cargar todas las transacciones
   const fetchTransactions = async (uid: string) => {
-    console.log("📊 Cargando historial completo para user ID:", uid);
-
     const { data, error } = await supabase
       .from("transactions")
       .select("*")
@@ -74,17 +62,13 @@ export default function HistoryScreen() {
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.log("❌ Error al obtener transacciones:", error.message);
       return [];
     }
-
-    console.log("📦 Total de transacciones:", data?.length || 0);
 
     if (!data || data.length === 0) {
       return [];
     }
 
-    // Obtener emails de todos los usuarios involucrados
     const userIds = new Set<string>();
     data.forEach((tx) => {
       if (tx.remitente_id) userIds.add(tx.remitente_id);
@@ -117,8 +101,6 @@ export default function HistoryScreen() {
         receptor_nombre: userMap.get(tx.receptor_id),
       };
     });
-
-    console.log("✅ Transacciones formateadas:", formatted.length);
     return formatted;
   };
 
@@ -195,7 +177,7 @@ export default function HistoryScreen() {
             styles.itemContainer,
             {
               opacity: pressed ? 0.7 : 1,
-              backgroundColor: colorScheme === "dark" ? "#1E1E1E" : "#FFFFFF",
+             backgroundColor: theme.card,
             },
           ]}
         >
@@ -204,22 +186,8 @@ export default function HistoryScreen() {
           </View>
 
           <View style={styles.textContainer}>
-            <Text
-              style={[
-                styles.label,
-                { color: colorScheme === "dark" ? "#FFFFFF" : "#1A1A1A" },
-              ]}
-            >
-              {label}
-            </Text>
-            <Text
-              style={[
-                styles.date,
-                { color: colorScheme === "dark" ? "#BDBDBD" : "#757575" },
-              ]}
-            >
-              {date}
-            </Text>
+            <Text style={[styles.label, { color: theme.text }]}>{label}</Text>
+            <Text style={[styles.date, { color: theme.subText }]}>{date}</Text>
           </View>
 
           <Text style={[styles.amount, { color }]}>
@@ -236,7 +204,7 @@ export default function HistoryScreen() {
     <View
       style={[
         styles.container,
-        { backgroundColor: colorScheme === "dark" ? "#121212" : "#FFFFFF" },
+        { backgroundColor: theme.background},
       ]}
     >
       <Stack.Screen options={{ headerShown: false }} />
@@ -245,12 +213,7 @@ export default function HistoryScreen() {
       <View
         style={[
           styles.header,
-          {
-            backgroundColor: colorScheme === "dark" ? "#1E1E1E" : "#FFFFFF",
-            borderBottomColor: colorScheme === "dark" ? "#333" : "#E0E0E0",
-          },
-        ]}
-      >
+          {backgroundColor: theme.card, borderBottomColor: theme.border }]}>
         <TouchableOpacity
           onPress={async () => {
             await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -259,17 +222,10 @@ export default function HistoryScreen() {
           activeOpacity={0.7}
           style={styles.backIconButton}
         >
-          <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
+          <Ionicons name="chevron-back" size={24} color={theme.text} />
         </TouchableOpacity>
 
-        <Text
-          style={[
-            styles.headerTitle,
-            { color: colorScheme === "dark" ? "#FFFFFF" : "#1A1A1A" },
-          ]}
-        >
-          Historial
-        </Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Historial</Text>
       </View>
 
       {/* Contenido */}
@@ -311,7 +267,6 @@ export default function HistoryScreen() {
   );
 }
 
-/* Styles */
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
@@ -330,26 +285,11 @@ const styles = StyleSheet.create({
     marginRight: 8,
     padding: 6,
     borderRadius: 10,
-    backgroundColor: "#000",
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-  },
-  listContent: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 20,
-  },
+  headerTitle: { fontSize: 20, fontWeight: "700" },
+  loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center" },
+  loadingText: { marginTop: 12, fontSize: 14 },
+  listContent: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 20 },
   itemContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -361,34 +301,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 3,
   },
-  iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
+  iconCircle: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", marginRight: 12 },
   textContainer: { flex: 1 },
   label: { fontSize: 16, fontWeight: "600" },
   date: { fontSize: 13, marginTop: 2 },
   amount: { fontSize: 16, fontWeight: "700" },
-  emptyContainer: { 
-    flex: 1, 
-    alignItems: "center", 
-    justifyContent: "center",
-    paddingHorizontal: 40,
-  },
-  emptyText: { 
-    marginTop: 10, 
-    fontSize: 18, 
-    color: "#757575", 
-    fontWeight: "600" 
-  },
-  emptySubText: { 
-    fontSize: 14, 
-    color: "#9E9E9E", 
-    marginTop: 4,
-    textAlign: "center",
-  },
+  emptyContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 40 },
+  emptyText: { marginTop: 10, fontSize: 18, fontWeight: "600" },
+  emptySubText: { fontSize: 14, marginTop: 4, textAlign: "center" },
 });

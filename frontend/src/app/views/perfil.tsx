@@ -14,27 +14,23 @@ import { useRouter } from "expo-router";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { useAuth } from "@/src/providers/auth-provider";
 import { supabase } from "../../lib/supabase";
+import { useTheme } from "../../context/ThemeContext";
 
 export default function PerfilScreen() {
-  const colorScheme = useColorScheme();
+  const { theme } = useTheme();
   const router = useRouter();
-
-  // 💚 Datos 100% realtime desde el AuthProvider
   const { user, mounting } = useAuth();
 
   if (mounting || !user) {
-    console.log("Perfil → mounting:", mounting);
-console.log("Perfil → user:", user);
-
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color="#4CAF50" />
-        <Text style={{ marginTop: 10 }}>Cargando perfil...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={theme.text} />
+        <Text style={[styles.loadingText, { color: theme.text }]}>Cargando perfil...</Text>
       </View>
     );
   }
 
-  // Generar iniciales del nombre
+  // Iniciales del nombre
   const initials = user.nombre
     ?.split(" ")
     .map((n) => n[0])
@@ -44,7 +40,6 @@ console.log("Perfil → user:", user);
 
   const handleOptionPress = (action: string) => {
     Haptics.selectionAsync();
-
     if (action === "ajustes") router.push("/ajustes");
     if (action === "Informacion Personal") router.push("/informacionpersonal");
   };
@@ -65,37 +60,24 @@ console.log("Perfil → user:", user);
 
   return (
     <ScrollView
-      style={[
-        styles.container,
-        { backgroundColor: colorScheme === "dark" ? "#121212" : "#FFFFFF" },
-      ]}
+       style={[styles.container, { backgroundColor: theme.background }]}
       contentContainerStyle={{ paddingBottom: 40 }}
       showsVerticalScrollIndicator={false}
     >
       {/* Tarjeta del usuario */}
       <Animated.View
         entering={FadeInUp.duration(400)}
-        style={[
-          styles.userCard,
-          { backgroundColor: colorScheme === "dark" ? "#1E1E1E" : "#FAFAFA" },
-        ]}
+        style={[styles.userCard, { backgroundColor: theme.card }]}
       >
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{initials}</Text>
+        <View style={[styles.avatar, { backgroundColor: theme.text }]}>
+          <Text style={[styles.avatarText, { color: theme.card }]}>{initials}</Text>
         </View>
 
-        <Text
-          style={[
-            styles.userName,
-            { color: colorScheme === "dark" ? "#FFFFFF" : "#1A1A1A" },
-          ]}
-        >
-          {user.nombre}
-        </Text>
+        <Text style={[styles.userName, { color: theme.text }]}>{user.nombre}</Text>
 
         <View style={styles.emailRow}>
-          <Ionicons name="mail-outline" size={16} color="#9E9E9E" />
-          <Text style={styles.email}>{user.email}</Text>
+          <Ionicons name="mail-outline" size={16} color={theme.text} />
+          <Text style={[styles.email, { color: theme.text }]}>{user.email}</Text>
         </View>
       </Animated.View>
 
@@ -108,34 +90,15 @@ console.log("Perfil → user:", user);
               style={({ pressed }) => [
                 styles.menuItem,
                 {
-                  backgroundColor: pressed
-                    ? colorScheme === "dark"
-                      ? "#2A2A2A"
-                      : "#F0F0F0"
-                    : "transparent",
+                  backgroundColor: pressed ? theme.card : "transparent",
                 },
               ]}
             >
               <View style={styles.menuLeft}>
-                <Ionicons
-                  name={item.icon as any}
-                  size={22}
-                  color={colorScheme === "dark" ? "#FFFFFF" : "#1A1A1A"}
-                />
-                <Text
-                  style={[
-                    styles.menuLabel,
-                    { color: colorScheme === "dark" ? "#FFFFFF" : "#1A1A1A" },
-                  ]}
-                >
-                  {item.label}
-                </Text>
+                <Ionicons name={item.icon as any} size={22} color={theme.text} />
+                <Text style={[styles.menuLabel, { color: theme.text }]}>{item.label}</Text>
               </View>
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={colorScheme === "dark" ? "#9E9E9E" : "#757575"}
-              />
+              <Ionicons name="chevron-forward" size={20} color={theme.text} />
             </Pressable>
           </Animated.View>
         ))}
@@ -163,8 +126,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   loadingText: {
-    marginTop: 12,
+    marginTop: 10,
     fontSize: 14,
   },
   userCard: {
@@ -181,13 +149,11 @@ const styles = StyleSheet.create({
     width: 90,
     height: 90,
     borderRadius: 45,
-    backgroundColor: "#4CAF50",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 10,
   },
   avatarText: {
-    color: "#FFFFFF",
     fontSize: 32,
     fontWeight: "700",
   },
@@ -203,7 +169,6 @@ const styles = StyleSheet.create({
   email: {
     marginLeft: 6,
     fontSize: 14,
-    color: "#9E9E9E",
   },
   menuContainer: {
     marginTop: 30,
@@ -243,9 +208,9 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   versionText: {
+    color: "#FFFFFF",
     marginTop: 30,
     textAlign: "center",
-    color: "#9E9E9E",
     fontSize: 13,
   },
 });

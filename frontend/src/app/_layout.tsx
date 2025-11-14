@@ -1,16 +1,20 @@
 import { Stack } from "expo-router";
 import { AuthProvider } from "../providers/auth-provider";
+import { ThemeProvider } from "../context/ThemeContext";
+import React from "react";
 
-export default function RootLayout() {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AuthProvider>
-      <Stack>
-        <Stack.Screen name="auth/login" options={{ headerShown: false }} />
-        <Stack.Screen name="views" options={{ headerShown: false }} />
-        <Stack.Screen name="recargardinero" options={{ title: "Recargar Dinero" }} />
-        <Stack.Screen name="enviardinero" options={{ title: "Enviar Dinero" }} />
-        <Stack.Screen name="completarperfil" options={{ headerShown: false }} />
-      </Stack>
-    </AuthProvider>
+    <ThemeProvider>{children}
+      <AuthProvider>
+        <Stack>
+          <Stack.Screen name="auth/login" options={{ headerShown: false }} />
+          <Stack.Screen name="views" options={{ headerShown: false }} />
+          <Stack.Screen name="recargardinero" options={{ title: "Recargar Dinero" }} />
+          <Stack.Screen name="enviardinero" options={{ title: "Enviar Dinero" }} />
+          <Stack.Screen name="completarperfil" options={{ headerShown: false }} />
+        </Stack>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

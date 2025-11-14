@@ -16,9 +16,11 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Stack, useRouter } from "expo-router";
 import { supabase } from "../lib/supabase";
 import {useAuth } from "../providers/auth-provider";
+import { useTheme } from "../context/ThemeContext";
 
 export default function PersonalInfoScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
   const [isEditing, setIsEditing] = useState(false);
 
   const [userInfo, setUserInfo] = useState({
@@ -128,51 +130,55 @@ function validatePhone(phone: string) {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.select({ ios: "padding" })}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.background }} behavior={Platform.select({ ios: "padding" })}>
       <Stack.Screen options={{ headerShown: false }} />
-      <ScrollView style={{ flex: 1, backgroundColor: "#fff" }} contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView style={{ flex: 1, backgroundColor: theme.background }} contentContainerStyle={{ paddingBottom: 40 }}>
 
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="chevron-back" size={24} color="#1e3a8a" />
+          <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, { backgroundColor: theme.card }]}>
+            <Ionicons name="chevron-back" size={24} color={theme.text} />
           </TouchableOpacity>
-          <Text style={styles.pageTitle}>Información Personal</Text>
+          <Text style={[styles.pageTitle, { color: theme.text }]}>Información Personal</Text>
         </View>
 
         {/* Avatar */}
         <View style={styles.avatarContainer}>
-          <View style={styles.avatar}>
+          <View style={[styles.avatar, { backgroundColor: theme.card }]}>
             <Text style={styles.avatarInitials}>{getInitials(userInfo.fullName)}</Text>
           </View>
-          <Text style={styles.name}>{userInfo.fullName}</Text>
-          <Text style={styles.email}>{userInfo.email}</Text>
+          <Text style={[styles.name, { color: theme.text }]}>{userInfo.fullName}</Text>
+          <Text style={[styles.email, { color: theme.subText }]}>{userInfo.email}</Text>
         </View>
 
         {/* CARD */}
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: theme.card }]}>
 
           {/* Nombre */}
-          <Text style={styles.label}>Nombre completo</Text>
+          <Text style={[styles.label, { color: theme.subText }]}>Nombre completo</Text>
           <TextInput
             editable={isEditing}
             value={userInfo.fullName}
             onChangeText={(v) =>{if (handleTextWithoutSpecials(v)) 
             {setUserInfo({ ...userInfo, fullName: v });}}}
-            style={[styles.input, !isEditing && styles.inputDisabled]}
+            style={[styles.input,
+              { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }, 
+               !isEditing && {backgroundColor: theme.card}]}
           />
 
-          {/* Email (bloqueado siempre) */}
-          <Text style={[styles.label, { marginTop: 14 }]}>Correo electrónico</Text>
+          {/* Email*/}
+          <Text style={[styles.label, { color: theme.subText, marginTop: 14 }]}>Correo electrónico</Text>
           <TextInput
             editable={false}
             value={userInfo.email}
-            style={[styles.input, styles.inputDisabledDark]}
+            style={[
+              styles.input,{backgroundColor: theme.card,borderColor: theme.border,color: theme.text,}
+            ]}
           />
-          <Text style={styles.helperText}>Contacta a soporte para cambiar</Text>
+          <Text style={[styles.helperText, { color: theme.subText }]}>Contacta a soporte para cambiar</Text>
 
           {/* Teléfono */}
-          <Text style={[styles.label, { marginTop: 14 }]}>Teléfono</Text>
+          <Text style={[styles.label, { marginTop: 14, color: theme.subText }]}>Teléfono</Text>
           <TextInput
             editable={isEditing}
             value={userInfo.phone}
@@ -181,7 +187,8 @@ function validatePhone(phone: string) {
               setUserInfo({ ...userInfo, phone: v });
               setErrors({...errors, phone: validatePhone(v) });
             }}
-            style={[styles.input, !isEditing && styles.inputDisabled,
+            style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border },
+              !isEditing && { backgroundColor: theme.card },
               errors.phone ? { borderColor: "red"} : {}
             ]}
           />
@@ -190,7 +197,7 @@ function validatePhone(phone: string) {
           ) :null}
 
           {/* Dirección */}
-          <Text style={[styles.label, { marginTop: 14 }]}>Dirección</Text>
+          <Text style={[styles.label, { marginTop: 14, color: theme.subText }]}>Dirección</Text>
           <TextInput
             editable={isEditing}
             multiline
@@ -200,26 +207,27 @@ function validatePhone(phone: string) {
                 setUserInfo({ ...userInfo, address: v });
               }
             }}
-            style={[styles.input, styles.textArea, !isEditing && styles.inputDisabled]}
+            style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border },
+              !isEditing && { backgroundColor: theme.card }]}
           />
 
-          {/* Fecha de nacimiento (bloqueado) */}
-          <Text style={[styles.label, { marginTop: 14 }]}>Fecha de nacimiento</Text>
+          {/* Fecha de nacimiento*/}
+          <Text style={[styles.label, { marginTop: 14, color: theme.subText }]}>Fecha de nacimiento</Text>
           <TextInput
             editable={false}
             value={userInfo.birthDate}
-            style={[styles.input, styles.inputDisabledDark]}
+            style={[styles.input, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
           />
-          <Text style={styles.helperText}>Contacta a soporte para cambiar</Text>
+          <Text style={[styles.helperText, { color: theme.subText }]}>Contacta a soporte para cambiar</Text>
 
-          {/* DNI (bloqueado) */}
-          <Text style={[styles.label, { marginTop: 14 }]}>DNI</Text>
+          {/* DNI*/}
+          <Text style={[styles.label, { marginTop: 14, color: theme.subText }]}>DNI</Text>
           <TextInput
             editable={false}
             value={userInfo.dni}
-            style={[styles.input, styles.inputDisabledDark]}
+            style={[styles.input, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
           />
-          <Text style={styles.helperText}>Contacta a soporte para cambiar</Text>
+          <Text style={[styles.helperText, { color: theme.subText }]}>Contacta a soporte para cambiar</Text>
 
         </View>
 
