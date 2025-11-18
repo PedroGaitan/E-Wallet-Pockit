@@ -167,14 +167,14 @@ export default function HomeScreen() {
     else description = "Recarga de saldo";
 
     return (
-      <Animated.View entering={FadeInUp.duration(400).delay(100)} style={styles.txItem}>
+      <Animated.View entering={FadeInUp.duration(400).delay(100)} style={[styles.txItem, { backgroundColor: theme.card }]}>
         <View style={[styles.txIcon, { backgroundColor: bgColor }]}>
           <Ionicons name={icon} size={20} color={color} />
         </View>
 
         <View style={{ flex: 1 }}>
-          <Text style={styles.txLabel}>{description}</Text>
-          <Text style={styles.txDate}>{date}</Text>
+          <Text style={[styles.txLabel, { color: theme.text }]}>{description}</Text>
+          <Text style={[styles.txDate, { color: theme.subText }]}>{date}</Text>
         </View>
 
         <Text style={[styles.txAmount, { color }]}>
