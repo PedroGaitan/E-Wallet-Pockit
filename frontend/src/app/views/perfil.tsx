@@ -23,9 +23,13 @@ export default function PerfilScreen() {
 
   if (mounting || !user) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+      <View
+        style={[styles.loadingContainer, { backgroundColor: theme.background }]}
+      >
         <ActivityIndicator size="large" color={theme.text} />
-        <Text style={[styles.loadingText, { color: theme.text }]}>Cargando perfil...</Text>
+        <Text style={[styles.loadingText, { color: theme.text }]}>
+          Cargando perfil...
+        </Text>
       </View>
     );
   }
@@ -42,6 +46,7 @@ export default function PerfilScreen() {
     Haptics.selectionAsync();
     if (action === "ajustes") router.push("/ajustes");
     if (action === "Informacion Personal") router.push("/informacionpersonal");
+    if (action === "qr") router.push("/qr");
   };
 
   const handleLogout = async () => {
@@ -51,16 +56,21 @@ export default function PerfilScreen() {
   };
 
   const menuOptions = [
-    { icon: "person-outline", label: "Información personal", action: "Informacion Personal" },
+    {
+      icon: "person-outline",
+      label: "Información personal",
+      action: "Informacion Personal",
+    },
     { icon: "shield-outline", label: "Seguridad" },
     { icon: "notifications-outline", label: "Notificaciones" },
     { icon: "settings-outline", label: "Ajustes", action: "ajustes" },
     { icon: "call-outline", label: "Soporte" },
+    { icon: "qr-code-outline", label: "QR", action: "qr" },
   ];
 
   return (
     <ScrollView
-       style={[styles.container, { backgroundColor: theme.background }]}
+      style={[styles.container, { backgroundColor: theme.background }]}
       contentContainerStyle={{ paddingBottom: 40 }}
       showsVerticalScrollIndicator={false}
     >
@@ -70,14 +80,20 @@ export default function PerfilScreen() {
         style={[styles.userCard, { backgroundColor: theme.card }]}
       >
         <View style={[styles.avatar, { backgroundColor: theme.text }]}>
-          <Text style={[styles.avatarText, { color: theme.card }]}>{initials}</Text>
+          <Text style={[styles.avatarText, { color: theme.card }]}>
+            {initials}
+          </Text>
         </View>
 
-        <Text style={[styles.userName, { color: theme.text }]}>{user.nombre}</Text>
+        <Text style={[styles.userName, { color: theme.text }]}>
+          {user.nombre}
+        </Text>
 
         <View style={styles.emailRow}>
           <Ionicons name="mail-outline" size={16} color={theme.text} />
-          <Text style={[styles.email, { color: theme.text }]}>{user.email}</Text>
+          <Text style={[styles.email, { color: theme.text }]}>
+            {user.email}
+          </Text>
         </View>
       </Animated.View>
 
@@ -95,8 +111,14 @@ export default function PerfilScreen() {
               ]}
             >
               <View style={styles.menuLeft}>
-                <Ionicons name={item.icon as any} size={22} color={theme.text} />
-                <Text style={[styles.menuLabel, { color: theme.text }]}>{item.label}</Text>
+                <Ionicons
+                  name={item.icon as any}
+                  size={22}
+                  color={theme.text}
+                />
+                <Text style={[styles.menuLabel, { color: theme.text }]}>
+                  {item.label}
+                </Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={theme.text} />
             </Pressable>

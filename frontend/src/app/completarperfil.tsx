@@ -8,7 +8,7 @@ import {
   ScrollView,
   Alert,
   Platform,
-  ToastAndroid
+  ToastAndroid,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -40,7 +40,13 @@ export default function CompleteProfile() {
 
   // VALIDACIONES IMPORTANTES
   const validateForm = () => {
-    if (!form.name || !form.document_id || !form.birth_date || !form.address || !form.telefono) {
+    if (
+      !form.name ||
+      !form.document_id ||
+      !form.birth_date ||
+      !form.address ||
+      !form.telefono
+    ) {
       showToast("Todos los campos son obligatorios.");
       return false;
     }
@@ -63,12 +69,18 @@ export default function CompleteProfile() {
 
     setLoading(true);
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
     if (!user || userError) {
       showToast("No hay usuario autenticado.");
       setLoading(false);
       return;
     }
+
+    // Generate personal QR code URL with user ID
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${user.id}`;
 
     const { data, error } = await supabase
       .from("users")
@@ -78,6 +90,7 @@ export default function CompleteProfile() {
         birth_date: formatDate(form.birth_date),
         direccion: form.address,
         telefono: form.telefono,
+        personal_qr: qrCodeUrl,
       })
       .eq("id", user.id)
       .select("*");
@@ -89,7 +102,8 @@ export default function CompleteProfile() {
       return;
     }
 
-    showToast("Perfil completado correctamente ✅");
+    showToast("Perfil completado correctamente");
+
     router.replace("/views/home");
   };
 
@@ -120,7 +134,9 @@ export default function CompleteProfile() {
           maxLength={8}
           style={styles.input}
           value={form.document_id}
-          onChangeText={(v) => setForm({ ...form, document_id: v.replace(/[^0-9]/g, "") })}
+          onChangeText={(v) =>
+            setForm({ ...form, document_id: v.replace(/[^0-9]/g, "") })
+          }
         />
       </View>
 
@@ -134,7 +150,9 @@ export default function CompleteProfile() {
           maxLength={9}
           style={styles.input}
           value={form.telefono}
-          onChangeText={(v) => setForm({ ...form, telefono: v.replace(/[^0-9]/g, "") })}
+          onChangeText={(v) =>
+            setForm({ ...form, telefono: v.replace(/[^0-9]/g, "") })
+          }
         />
       </View>
 
@@ -146,7 +164,13 @@ export default function CompleteProfile() {
           style={{ flex: 1, marginLeft: 10 }}
           onPress={() => setShowPicker(true)}
         >
-          <Text style={{ color: form.birth_date ? colors.foreground : colors.mutedForeground }}>
+          <Text
+            style={{
+              color: form.birth_date
+                ? colors.foreground
+                : colors.mutedForeground,
+            }}
+          >
             {form.birth_date || "Seleccionar fecha de nacimiento"}
           </Text>
         </TouchableOpacity>
@@ -163,7 +187,10 @@ export default function CompleteProfile() {
             setShowPicker(false);
             if (selectedDate) {
               const day = String(selectedDate.getDate()).padStart(2, "0");
-              const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
+              const month = String(selectedDate.getMonth() + 1).padStart(
+                2,
+                "0"
+              );
               const year = selectedDate.getFullYear();
               setForm({ ...form, birth_date: `${day}/${month}/${year}` });
             }
@@ -184,7 +211,11 @@ export default function CompleteProfile() {
         />
       </View>
 
-      <TouchableOpacity disabled={loading} style={styles.button} onPress={handleComplete}>
+      <TouchableOpacity
+        disabled={loading}
+        style={styles.button}
+        onPress={handleComplete}
+      >
         <Text style={styles.buttonText}>
           {loading ? "Guardando..." : "Guardar información"}
         </Text>
@@ -199,13 +230,18 @@ const colors = {
   foreground: "#ffffff",
   mutedForeground: "#9ca3af",
   primary: "#ffffff",
-  primaryForeground: "#000000"
+  primaryForeground: "#000000",
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { padding: 24, paddingTop: 60 },
-  title: { color: colors.foreground, fontSize: 22, fontWeight: "700", marginBottom: 6 },
+  title: {
+    color: colors.foreground,
+    fontSize: 22,
+    fontWeight: "700",
+    marginBottom: 6,
+  },
   subtitle: { color: colors.mutedForeground, marginBottom: 24 },
   inputGroup: {
     flexDirection: "row",
@@ -222,11 +258,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 14,
     alignItems: "center",
-    marginTop: 12
+    marginTop: 12,
   },
   buttonText: {
     color: colors.primaryForeground,
     fontWeight: "600",
-    fontSize: 16
-  }
+    fontSize: 16,
+  },
 });

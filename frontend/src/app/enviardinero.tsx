@@ -20,6 +20,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../lib/supabase";
 import { useTheme } from "../context/ThemeContext";
+import QRScanner from "../components/QRScanner";
 
 const QUICK_AMOUNTS = [50, 100, 500];
 
@@ -30,6 +31,7 @@ export default function SendMoneyScreen() {
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
   const [balance, setBalance] = useState<number>(0);
+  const [showScanner, setShowScanner] = useState(false);
 
   const amountNum = parseFloat(amount.replace(",", ".")) || 0;
   const isEmailValid = /^\S+@\S+\.\S+$/.test(recipient.trim());
@@ -42,7 +44,9 @@ export default function SendMoneyScreen() {
   // Cargar saldo
   useEffect(() => {
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
       const { data, error } = await supabase
@@ -56,7 +60,10 @@ export default function SendMoneyScreen() {
   }, []);
 
   const animatePressIn = () => {
-    Animated.spring(scaleAnim, { toValue: 0.95, useNativeDriver: true }).start();
+    Animated.spring(scaleAnim, {
+      toValue: 0.95,
+      useNativeDriver: true,
+    }).start();
   };
   const animatePressOut = () => {
     Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }).start();
@@ -84,13 +91,20 @@ export default function SendMoneyScreen() {
     Keyboard.dismiss();
   };
 
+  const handleQRScanned = (email: string) => {
+    setRecipient(email);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
   const handleSend = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     animatePressIn();
     setLoading(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error("No se encontró usuario activo");
 
       const { data: remitenteData, error: remitenteError } = await supabase
@@ -99,7 +113,8 @@ export default function SendMoneyScreen() {
         .eq("email", user.email)
         .single();
 
-      if (remitenteError || !remitenteData) throw new Error("Remitente no encontrado");
+      if (remitenteError || !remitenteData)
+        throw new Error("Remitente no encontrado");
 
       const cleanEmail = recipient.trim().toLowerCase();
       const { data: receptorData, error: receptorError } = await supabase
@@ -129,20 +144,28 @@ export default function SendMoneyScreen() {
         amount: amountNum,
       });
 
-      if (error) throw new Error(error.message || "Error al realizar la transferencia");
+      if (error)
+        throw new Error(error.message || "Error al realizar la transferencia");
 
       setBalance((prev) => +(prev - amountNum).toFixed(2));
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-      const message = `💸 S/.${amountNum.toFixed(2)} enviados a ${receptorData.email}`;
-      Platform.OS === "android" ? ToastAndroid.show(message, ToastAndroid.SHORT) : Alert.alert("Enviado", message);
+      const message = `💸 S/.${amountNum.toFixed(2)} enviados a ${
+        receptorData.email
+      }`;
+      Platform.OS === "android"
+        ? ToastAndroid.show(message, ToastAndroid.SHORT)
+        : Alert.alert("Enviado", message);
 
       setRecipient("");
       setAmount("");
       router.replace("/views/home");
     } catch (err: any) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Error", err.message || "Ocurrió un problema al enviar dinero.");
+      Alert.alert(
+        "Error",
+        err.message || "Ocurrió un problema al enviar dinero."
+      );
     } finally {
       setLoading(false);
       animatePressOut();
@@ -173,50 +196,71 @@ export default function SendMoneyScreen() {
           >
             <Ionicons name="chevron-back" size={24} color={theme.text} />
           </TouchableOpacity>
-          <Text style={[styles.pageTitle, { color: theme.text }]}>Enviar dinero</Text>
+          <Text style={[styles.pageTitle, { color: theme.text }]}>
+            Enviar dinero
+          </Text>
         </View>
 
         {/* Balance */}
         <View style={[styles.balanceCard, { backgroundColor: theme.card }]}>
-          <Text style={[styles.balanceLabel, { color: theme.subText }]}>Saldo disponible</Text>
+          <Text style={[styles.balanceLabel, { color: theme.subText }]}>
+            Saldo disponible
+          </Text>
           <Text style={[styles.balanceValue, { color: theme.text }]}>
             S/.{balance.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
           </Text>
         </View>
 
         {/* Inputs */}
-        <Text style={[styles.label, { color: theme.text }]}>Correo del destinatario</Text>
-        <TextInput
-          value={recipient}
-          onChangeText={setRecipient}
-          placeholder="ejemplo@correo.com"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoComplete="email"
-          style={[
-            styles.input,
-            { backgroundColor: theme.text },
-            recipient.length > 0 && !isEmailValid ? styles.inputError : null,
-          ]}
-          returnKeyType="next"
-          editable={!loading}
-        />
-        {recipient.length > 0 && !isEmailValid && <Text style={styles.errorText}>Introduce un correo válido</Text>}
+        <Text style={[styles.label, { color: theme.text }]}>
+          Correo del destinatario
+        </Text>
+        <View style={styles.inputRow}>
+          <TextInput
+            value={recipient}
+            onChangeText={setRecipient}
+            placeholder="ejemplo@correo.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            style={[
+              styles.input,
+              styles.inputFlex,
+              { backgroundColor: theme.text },
+              recipient.length > 0 && !isEmailValid ? styles.inputError : null,
+            ]}
+            returnKeyType="next"
+            editable={!loading}
+          />
+        </View>
+        {recipient.length > 0 && !isEmailValid && (
+          <Text style={styles.errorText}>Introduce un correo válido</Text>
+        )}
 
-        <Text style={[styles.label, { color: theme.text, marginTop: 12 }]}>Monto a enviar</Text>
+        <Text style={[styles.label, { color: theme.text, marginTop: 12 }]}>
+          Monto a enviar
+        </Text>
         <View style={styles.amountRow}>
           <Text style={[styles.currency, { color: theme.text }]}>S/.</Text>
           <TextInput
             value={amount}
-            onChangeText={(t) => setAmount(t.replace(/[^0-9.,]/g, "").replace(",", "."))}
+            onChangeText={(t) =>
+              setAmount(t.replace(/[^0-9.,]/g, "").replace(",", "."))
+            }
             placeholder="0.00"
             placeholderTextColor={theme.subText}
             keyboardType="decimal-pad"
-            style={[styles.input, styles.amountInput, { backgroundColor: theme.text }]}
+            style={[
+              styles.input,
+              styles.amountInput,
+              { backgroundColor: theme.text },
+            ]}
             editable={!loading}
           />
         </View>
-        {exceedsBalance && <Text style={styles.errorText}>Saldo insuficiente</Text>}
+        {exceedsBalance && (
+          <Text style={styles.errorText}>Saldo insuficiente</Text>
+        )}
 
         {/* Botones rápidos */}
         <View style={styles.quickContainer}>
@@ -227,14 +271,23 @@ export default function SendMoneyScreen() {
               style={[styles.quickButton, { backgroundColor: theme.card }]}
               disabled={loading}
             >
-              <Text style={[styles.quickText, { color: theme.text }]}>{`S/.${q}`}</Text>
+              <Text
+                style={[styles.quickText, { color: theme.text }]}
+              >{`S/.${q}`}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Resumen */}
-        <View style={[styles.summary, { borderColor: theme.border, backgroundColor: theme.card }]}>
-          <Text style={[styles.summaryText, { color: theme.subText }]}>Resumen</Text>
+        <View
+          style={[
+            styles.summary,
+            { borderColor: theme.border, backgroundColor: theme.card },
+          ]}
+        >
+          <Text style={[styles.summaryText, { color: theme.subText }]}>
+            Resumen
+          </Text>
           <Text style={[styles.summaryAmount, { color: theme.text }]}>
             A enviar: S/.{amountNum > 0 ? amountNum.toFixed(2) : "0.00"}
           </Text>
@@ -248,7 +301,9 @@ export default function SendMoneyScreen() {
             disabled={!isFormValid || loading}
           >
             <LinearGradient
-              colors={isFormValid ? ["#2563eb", "#1e40af"] : ["#cbd5e1", "#cbd5e1"]}
+              colors={
+                isFormValid ? ["#2563eb", "#1e40af"] : ["#cbd5e1", "#cbd5e1"]
+              }
               start={[0, 0]}
               end={[1, 1]}
               style={[styles.sendButton, !isFormValid && { opacity: 0.7 }]}
@@ -263,7 +318,29 @@ export default function SendMoneyScreen() {
             </LinearGradient>
           </TouchableOpacity>
         </Animated.View>
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={async () => {
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            setShowScanner(true);
+          }}
+        >
+          <LinearGradient
+            colors={["#2563eb", "#1e40af"]}
+            start={[0, 0]}
+            end={[1, 1]}
+            style={[styles.sendButton, { marginTop: 12 }]}
+          >
+            <Text style={styles.sendButtonText}>Escanear QR</Text>
+          </LinearGradient>
+        </TouchableOpacity>
       </View>
+
+      <QRScanner
+        visible={showScanner}
+        onClose={() => setShowScanner(false)}
+        onScanned={handleQRScanned}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -390,5 +467,19 @@ const styles = StyleSheet.create({
     color: "#ef4444",
     marginTop: 6,
     marginBottom: 6,
+  },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  inputFlex: {
+    flex: 1,
+  },
+  scanButton: {
+    marginLeft: 8,
+    padding: 10,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
