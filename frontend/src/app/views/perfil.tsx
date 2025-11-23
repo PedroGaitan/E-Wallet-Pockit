@@ -4,14 +4,12 @@ import {
   Text,
   StyleSheet,
   Pressable,
-  useColorScheme,
   ScrollView,
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import Animated, { FadeInUp } from "react-native-reanimated";
 import { useAuth } from "@/src/providers/auth-provider";
 import { supabase } from "../../lib/supabase";
 import { useTheme } from "../../context/ThemeContext";
@@ -34,7 +32,6 @@ export default function PerfilScreen() {
     );
   }
 
-  // Iniciales del nombre
   const initials = user.nombre
     ?.split(" ")
     .map((n) => n[0])
@@ -74,10 +71,12 @@ export default function PerfilScreen() {
       contentContainerStyle={{ paddingBottom: 40 }}
       showsVerticalScrollIndicator={false}
     >
-      {/* Tarjeta del usuario */}
-      <Animated.View
-        entering={FadeInUp.duration(400)}
-        style={[styles.userCard, { backgroundColor: theme.card }]}
+      {/* TARJETA SIN ANIMACIÓN - HEADER MÁS ABAJO */}
+      <View
+        style={[
+          styles.userCard,
+          { backgroundColor: theme.card, marginTop: 40 },
+        ]}
       >
         <View style={[styles.avatar, { backgroundColor: theme.text }]}>
           <Text style={[styles.avatarText, { color: theme.card }]}>
@@ -95,12 +94,12 @@ export default function PerfilScreen() {
             {user.email}
           </Text>
         </View>
-      </Animated.View>
+      </View>
 
-      {/* Opciones de menú */}
+      {/* MENÚ SIN ANIMACIONES */}
       <View style={styles.menuContainer}>
-        {menuOptions.map((item, index) => (
-          <Animated.View key={item.label} entering={FadeInUp.delay(index * 80)}>
+        {menuOptions.map((item) => (
+          <View key={item.label}>
             <Pressable
               onPress={() => handleOptionPress(item.action || "")}
               style={({ pressed }) => [
@@ -122,7 +121,7 @@ export default function PerfilScreen() {
               </View>
               <Ionicons name="chevron-forward" size={20} color={theme.text} />
             </Pressable>
-          </Animated.View>
+          </View>
         ))}
       </View>
 
@@ -145,9 +144,8 @@ export default function PerfilScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
@@ -157,16 +155,17 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 14,
   },
+
   userCard: {
     alignItems: "center",
     paddingVertical: 40,
-    marginTop: 10,
     marginHorizontal: 20,
     borderRadius: 20,
     shadowColor: "#000",
     shadowOpacity: 0.05,
     shadowRadius: 5,
   },
+
   avatar: {
     width: 90,
     height: 90,
@@ -175,23 +174,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 10,
   },
-  avatarText: {
-    fontSize: 32,
-    fontWeight: "700",
-  },
-  userName: {
-    fontSize: 20,
-    fontWeight: "600",
-  },
-  emailRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 6,
-  },
-  email: {
-    marginLeft: 6,
-    fontSize: 14,
-  },
+  avatarText: { fontSize: 32, fontWeight: "700" },
+
+  userName: { fontSize: 20, fontWeight: "600" },
+
+  emailRow: { flexDirection: "row", alignItems: "center", marginTop: 6 },
+
+  email: { marginLeft: 6, fontSize: 14 },
+
   menuContainer: {
     marginTop: 30,
     marginHorizontal: 20,
@@ -199,6 +189,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderColor: "rgba(0,0,0,0.1)",
   },
+
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -206,29 +197,28 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 10,
   },
+
   menuLeft: {
     flexDirection: "row",
     alignItems: "center",
   },
-  menuLabel: {
-    fontSize: 16,
-    marginLeft: 12,
-    fontWeight: "500",
-  },
-  logoutContainer: {
-    marginTop: 30,
-    alignItems: "center",
-  },
+
+  menuLabel: { fontSize: 16, marginLeft: 12, fontWeight: "500" },
+
+  logoutContainer: { marginTop: 30, alignItems: "center" },
+
   logoutButton: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
   },
+
   logoutText: {
     color: "#E53935",
     fontSize: 16,
     fontWeight: "600",
   },
+
   versionText: {
     color: "#FFFFFF",
     marginTop: 30,

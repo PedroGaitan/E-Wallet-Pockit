@@ -4,10 +4,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import Animated, { FadeInUp } from "react-native-reanimated";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../providers/auth-provider";
 import { useTheme } from "../../context/ThemeContext";
+import {SafeAreaView,} from 'react-native-safe-area-context';
 
 type Transaction = {
   id: string;
@@ -141,6 +141,7 @@ export default function HomeScreen() {
 
   // 🎨 Render de cada transacción
   const renderTransaction = ({ item }: { item: Transaction }) => {
+    if (!item) return null;
     const isSend = item.type === "enviado";
     const isReceive = item.type === "recibido";
     const isTopUp = item.type === "recarga";
@@ -167,7 +168,7 @@ export default function HomeScreen() {
     else description = "Recarga de saldo";
 
     return (
-      <Animated.View entering={FadeInUp.duration(400).delay(100)} style={[styles.txItem, { backgroundColor: theme.card }]}>
+      <View  style={[styles.txItem, { backgroundColor: theme.card }]}>
         <View style={[styles.txIcon, { backgroundColor: bgColor }]}>
           <Ionicons name={icon} size={20} color={color} />
         </View>
@@ -180,14 +181,15 @@ export default function HomeScreen() {
         <Text style={[styles.txAmount, { color }]}>
           {isSend ? "-" : "+"}S/. {item.cantidad.toFixed(2)}
         </Text>
-      </Animated.View>
+      </View>
     );
   };
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <FlatList
-        data={transactions.slice(0, 3)}
+        data={transactions.slice(0, 3) ??[]}
         keyExtractor={(i) => i.id}
         renderItem={renderTransaction}
         refreshControl={
@@ -261,6 +263,7 @@ export default function HomeScreen() {
         }
       />
     </View>
+    </SafeAreaView>
   );
 }
 
@@ -271,7 +274,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 20,
-    paddingVertical: Platform.OS === "ios" ? 50 : 30,
+    paddingVertical: 20,
+    paddingTop: 20,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
   },

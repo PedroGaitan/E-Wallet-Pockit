@@ -22,6 +22,7 @@ import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../lib/supabase";
 import { useTheme } from "../context/ThemeContext";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const PRESET_AMOUNTS = [50, 100, 200, 300, 500, 1000];
 
@@ -51,9 +52,7 @@ export default function RechargeScreen() {
 
       if (!error && data) {
         setBalance(data.balance);
-        setUserId(data.id);
-        console.log("💰 Saldo actual:", data.balance);
-      }
+        setUserId(data.id);}
     })();
   }, []);
 
@@ -184,7 +183,7 @@ export default function RechargeScreen() {
       <Stack.Screen options={{ headerShown: false }} />
 
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <SafeAreaView  style={[styles.container, { backgroundColor: theme.background }]}>
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity
@@ -316,7 +315,7 @@ export default function RechargeScreen() {
               )}
             </LinearGradient>
           </TouchableOpacity>
-        </View>
+        </SafeAreaView >
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
@@ -328,7 +327,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff",
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === "ios" ? 60 : 30,
+    paddingTop: 0,
   },
   header: {
     flexDirection: "row",

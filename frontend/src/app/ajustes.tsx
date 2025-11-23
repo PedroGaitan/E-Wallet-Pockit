@@ -4,16 +4,14 @@ import {
   Text,
   StyleSheet,
   Pressable,
-  SafeAreaView,
-  Platform,
   FlatList,
-  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter, Stack } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme, ThemeId } from "../context/ThemeContext";
 
 type ThemeOption = {
@@ -44,7 +42,6 @@ export default function AjustesScreen() {
     try {
       setAppTheme(id);
       await AsyncStorage.setItem(STORAGE_KEYS.THEME, id);
-    } catch (e) {
     } finally {
       setSaving(false);
     }
@@ -61,14 +58,13 @@ export default function AjustesScreen() {
           {
             borderColor: selected ? "#3B82F6" : "transparent",
             opacity: pressed ? 0.7 : 1,
-            backgroundColor: theme.card, // <- tarjeta cambia
+            backgroundColor: theme.card,
           },
         ]}
       >
-        <Stack.Screen options={{ headerShown: false }} />
         <View style={styles.previewWrap}>
           <LinearGradient
-            colors={item.colors ?? [theme.background, theme.card]}
+            colors={item.colors}
             style={styles.previewGradient}
           />
         </View>
@@ -78,26 +74,31 @@ export default function AjustesScreen() {
           <Text style={[styles.themeDesc, { color: theme.text }]}>{item.description}</Text>
         </View>
 
-        <View>
-          {selected && <Ionicons name="checkmark-circle" size={22} color="#10B981" />}
-        </View>
+        {selected && <Ionicons name="checkmark-circle" size={22} color="#10B981" />}
       </Pressable>
     );
   }
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
-      {/* Botón atrás */}
-      <Pressable
-        onPress={() => {
-          Haptics.selectionAsync();
-          router.back();
-        }}
-        style={styles.backButton}
-      >
-        <Ionicons name="chevron-back" size={24} color={theme.text} />
-      </Pressable>
+      <Stack.Screen options={{ headerShown: false }} />
 
+      {/* HEADER */}
+      <View style={styles.headerRow}>
+        <Pressable
+          onPress={() => {
+            Haptics.selectionAsync();
+            router.back();
+          }}
+          style={styles.backButton}
+        >
+          <Ionicons name="chevron-back" size={26} color={theme.text} />
+        </Pressable>
+
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Ajustes</Text>
+      </View>
+
+      {/* CONTENIDO */}
       <View style={styles.content}>
         <Text style={[styles.infoText, { color: theme.text }]}>
           Selecciona un tema para la aplicación
@@ -109,6 +110,7 @@ export default function AjustesScreen() {
           renderItem={renderItem}
           ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
           contentContainerStyle={{ paddingBottom: 20 }}
+          showsVerticalScrollIndicator={false}
         />
       </View>
     </SafeAreaView>
@@ -116,10 +118,30 @@ export default function AjustesScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, paddingHorizontal: 20, paddingTop: Platform.OS === "android" ? 24 : 0 },
-  backButton: { alignSelf: "flex-start", padding: 8, marginBottom: 10 },
+  safeArea: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+
+  // HEADER
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+    gap: 6,
+  },
+  backButton: {
+    padding: 6,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontFamily: "Poppins-Medium",
+  },
+
   content: { flex: 1 },
   infoText: { fontSize: 14, marginBottom: 12, fontFamily: "Poppins-Regular" },
+
+  // ITEMS DE TEMA
   themeItem: {
     flexDirection: "row",
     alignItems: "center",
