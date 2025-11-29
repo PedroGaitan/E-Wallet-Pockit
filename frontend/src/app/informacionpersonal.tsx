@@ -17,6 +17,7 @@ import { Stack, useRouter } from "expo-router";
 import { supabase } from "../lib/supabase";
 import {useAuth } from "../providers/auth-provider";
 import { useTheme } from "../context/ThemeContext";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function PersonalInfoScreen() {
   const router = useRouter();
@@ -130,12 +131,14 @@ function validatePhone(phone: string) {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.background }} behavior={Platform.select({ ios: "padding" })}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.background }} 
+      behavior={Platform.select({ ios: "padding", android: undefined })}>
       <Stack.Screen options={{ headerShown: false }} />
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
       <ScrollView style={{ flex: 1, backgroundColor: theme.background }} contentContainerStyle={{ paddingBottom: 40 }}>
 
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: 0 }]}>
           <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, { backgroundColor: theme.card }]}>
             <Ionicons name="chevron-back" size={24} color={theme.text} />
           </TouchableOpacity>
@@ -255,6 +258,7 @@ function validatePhone(phone: string) {
         </View>
 
       </ScrollView>
+      </SafeAreaView>
     </KeyboardAvoidingView>
   );
 }

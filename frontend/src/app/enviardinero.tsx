@@ -21,6 +21,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../lib/supabase";
 import { useTheme } from "../context/ThemeContext";
 import QRScanner from "../components/QRScanner";
+import { SafeAreaView } from "react-native-safe-area-context";
+
 
 const QUICK_AMOUNTS = [50, 100, 500];
 
@@ -183,7 +185,7 @@ export default function SendMoneyScreen() {
       behavior={Platform.select({ ios: "padding", android: undefined })}
     >
       <Stack.Screen options={{ headerShown: false }} />
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -334,7 +336,7 @@ export default function SendMoneyScreen() {
             <Text style={styles.sendButtonText}>Escanear QR</Text>
           </LinearGradient>
         </TouchableOpacity>
-      </View>
+      </SafeAreaView>
 
       <QRScanner
         visible={showScanner}
@@ -351,7 +353,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff",
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === "ios" ? 60 : 30,
+    paddingTop: 0,
   },
   header: {
     flexDirection: "row",
