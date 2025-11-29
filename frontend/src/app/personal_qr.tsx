@@ -11,8 +11,9 @@ import { Stack, useRouter } from "expo-router";
 import { useAuth } from "../providers/auth-provider";
 import { useTheme } from "../context/ThemeContext";
 import { supabase } from "../lib/supabase";
+import Purchases from 'react-native-purchases';
 
-export default function QrScreen() {
+export default async function QrScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { theme } = useTheme();
@@ -41,6 +42,10 @@ export default function QrScreen() {
     loadQrCode();
   }, [user]);
 
+  const customerInfo = await Purchases.getCustomerInfo();
+  if(!customerInfo.entitlements.active["premium"]) {
+    router.replace("/views/plans");
+  }
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <Stack.Screen options={{ headerShown: false }} />

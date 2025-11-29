@@ -1,9 +1,21 @@
 import { Stack } from "expo-router";
 import { AuthProvider } from "../providers/auth-provider";
 import { ThemeProvider } from "../context/ThemeContext";
-import React from "react";
+import React, { useEffect } from "react";
+import { Platform } from "react-native";
+import Purchases, { LOG_LEVEL } from 'react-native-purchases';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
+
+    if (Platform.OS === "ios") {
+      Purchases.configure({ apiKey: "test_fuNnroMRBeuNEbWnWrjSzEqqPDW" });
+    } else if (Platform.OS === "android") {
+      Purchases.configure({ apiKey: "test_fuNnroMRBeuNEbWnWrjSzEqqPDW" });
+    }
+  }, []);
+
   return (
     <ThemeProvider>{children}
       <AuthProvider>
