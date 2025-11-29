@@ -20,18 +20,42 @@ import { Stack, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
+import { supabase } from "../lib/supabase";
+import { useTheme } from "../context/ThemeContext";
 
 const PRESET_AMOUNTS = [50, 100, 200, 300, 500, 1000];
 
 export default function RechargeScreen() {
   const router = useRouter();
-  const [balance, setBalance] = useState<number>(1250.5);
+  const { theme } = useTheme();
+  const [balance, setBalance] = useState<number>(0);
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [amount, setAmount] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
   const slideAnim = useRef(new Animated.Value(20)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  // 🟢 Cargar saldo actual del usuario
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("users")
+        .select("id, balance")
+        .eq("email", user.email)
+        .single();
+
+      if (!error && data) {
+        setBalance(data.balance);
+        setUserId(data.id);
+        console.log("💰 Saldo actual:", data.balance);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     if (selectedAmount || parseFloat(amount) > 0) {
@@ -81,6 +105,7 @@ export default function RechargeScreen() {
 
   const total = selectedAmount || parseFloat(amount) || 0;
 
+  // 💰 Confirmar recarga y registrar en Supabase
   const handleConfirm = async () => {
     const rechargeValue = total;
     if (rechargeValue <= 0) {
@@ -88,28 +113,64 @@ export default function RechargeScreen() {
       return Alert.alert("Error", "Ingresa un monto válido para recargar.");
     }
 
+    if (!userId) {
+      return Alert.alert("Error", "No se pudo identificar el usuario.");
+    }
+
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setLoading(true);
 
     try {
-      await new Promise((r) => setTimeout(r, 1500));
+      console.log("💸 Procesando recarga de:", rechargeValue);
 
+      // 1️⃣ Actualizar el saldo del usuario
+      const { error: updateError } = await supabase
+        .from("users")
+        .update({ balance: balance + rechargeValue })
+        .eq("id", userId);
+
+      if (updateError) {
+        throw new Error("Error al actualizar el saldo");
+      }
+
+      // 2️⃣ Registrar la transacción (remitente = receptor = mismo usuario)
+      const { error: txError } = await supabase
+        .from("transactions")
+        .insert({
+          remitente_id: userId,
+          receptor_id: userId,
+          cantidad: rechargeValue,
+          created_at: new Date().toISOString(),
+        });
+
+      if (txError) {
+        console.error("❌ Error al registrar transacción:", txError);
+        throw new Error("Error al registrar la transacción");
+      }
+
+      console.log("✅ Recarga exitosa");
+
+      // Actualizar el balance local
       setBalance((prev) => prev + rechargeValue);
 
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-      const message = `✅ Recarga de $${rechargeValue.toFixed(2)} exitosa`;
+      const message = `✅ Recarga de S/.${rechargeValue.toFixed(2)} exitosa`;
       if (Platform.OS === "android") {
         ToastAndroid.show(message, ToastAndroid.LONG);
       } else {
         Alert.alert("Recarga completada", message);
       }
 
+      // Limpiar y volver al home
+      setSelectedAmount(null);
+      setAmount("");
       router.replace("/views/home");
-    } catch (err) {
-      console.error(err);
+
+    } catch (err: any) {
+      console.error("❌ Error en recarga:", err);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Error", "No se pudo procesar la recarga.");
+      Alert.alert("Error", err.message || "No se pudo procesar la recarga.");
     } finally {
       setLoading(false);
     }
@@ -117,13 +178,13 @@ export default function RechargeScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
+      style={{ flex: 1, backgroundColor: theme.background }}
       behavior={Platform.select({ ios: "padding", android: undefined })}
     >
       <Stack.Screen options={{ headerShown: false }} />
 
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: theme.background }]}>
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity
@@ -132,12 +193,19 @@ export default function RechargeScreen() {
                 router.back();
               }}
               activeOpacity={0.7}
-              style={styles.backButton}
+              style={[styles.backButton, { backgroundColor: theme.card }]}
             >
-              <Ionicons name="chevron-back" size={24} color="#1e3a8a" />
+              <Ionicons name="chevron-back" size={24} color={theme.text} />
             </TouchableOpacity>
+              <Text style={[styles.pageTitle, { color: theme.text }]}>Recargar dinero</Text>
+          </View>
 
-            <Text style={styles.pageTitle}>Recargar dinero</Text>
+          {/* Saldo actual */}
+          <View style={[styles.balanceCard, { backgroundColor: theme.card }]}>
+            <Text style={[styles.balanceLabel, { color: theme.subText }]}>Saldo actual</Text>
+             <Text style={[styles.balanceValue, { color: theme.text }]}>
+              S/.{balance.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+            </Text>
           </View>
 
           {/* Grid de montos */}
@@ -149,7 +217,8 @@ export default function RechargeScreen() {
                   key={value}
                   style={[
                     styles.amountBox,
-                    isSelected && styles.amountBoxSelected,
+                    { backgroundColor: theme.card, borderColor: theme.border },
+                    isSelected && { backgroundColor: "#eef2ff", borderColor: "#2563eb" }
                   ]}
                   onPress={() => handlePresetPress(value)}
                   activeOpacity={0.9}
@@ -158,10 +227,11 @@ export default function RechargeScreen() {
                   <Text
                     style={[
                       styles.amountText,
+                      { color: theme.text },
                       isSelected && styles.amountTextSelected,
                     ]}
                   >
-                    ${value}
+                    S/.{value}
                   </Text>
                 </TouchableOpacity>
               );
@@ -169,18 +239,18 @@ export default function RechargeScreen() {
           </View>
 
           {/* Input personalizado */}
-          <Text style={styles.label}>Otro monto</Text>
+          <Text style={[styles.label, { color: theme.text }]}>Otro monto</Text>
           <TextInput
             value={amount}
             onChangeText={handleAmountChange}
             placeholder="Ingresa monto"
             keyboardType="number-pad"
             editable={!loading}
-            style={styles.input}
+            style={[styles.input, { backgroundColor: theme.text, color: theme.card }]}
           />
 
           {/* Método de pago */}
-          <View style={styles.cardContainer}>
+          <View style={[styles.cardContainer, { backgroundColor: theme.card }]}>
             <LinearGradient
               colors={["#1e40af", "#2563eb"]}
               start={[0, 0]}
@@ -189,14 +259,14 @@ export default function RechargeScreen() {
             >
               <Ionicons name="card-outline" size={28} color="#fff" />
             </LinearGradient>
-            <Text style={styles.cardText}>•••• 4829</Text>
+             <Text style={[styles.cardText, { color: theme.text }]}>•••• 4829</Text>
           </View>
 
           {/* Resumen animado */}
           {(selectedAmount || parseFloat(amount) > 0) && (
             <Animated.View
               style={[
-                styles.summaryContainer,
+                styles.summaryContainer,{ backgroundColor: theme.card, borderColor: theme.border },
                 {
                   transform: [{ translateY: slideAnim }],
                   opacity: fadeAnim,
@@ -204,20 +274,20 @@ export default function RechargeScreen() {
               ]}
             >
               <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Monto</Text>
-                <Text style={styles.summaryValue}>${total.toFixed(2)}</Text>
+                <Text style={[styles.summaryLabel, { color: theme.subText }]}>Monto</Text>
+                <Text style={[styles.summaryValue, { color: theme.text }]}>S/.{total.toFixed(2)}</Text>
               </View>
               <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Comisión</Text>
-                <Text style={styles.summaryValue}>$0.00</Text>
+                <Text style={[styles.summaryLabel, { color: theme.subText }]}>Comisión</Text>
+                <Text style={[styles.summaryValue, { color: theme.text }]}>S/.0.00</Text>
               </View>
               <View style={styles.separator} />
               <View style={styles.summaryRow}>
-                <Text style={[styles.summaryLabel, { fontWeight: "700" }]}>
+               <Text style={[styles.summaryLabel, { color: theme.text, fontWeight: "700" }]}>
                   Total
                 </Text>
-                <Text style={[styles.summaryValue, { fontWeight: "700" }]}>
-                  ${total.toFixed(2)}
+                <Text style={[styles.summaryValue, { color: theme.text, fontWeight: "700" }]}>
+                  S/.{total.toFixed(2)}
                 </Text>
               </View>
             </Animated.View>
@@ -227,13 +297,17 @@ export default function RechargeScreen() {
           <TouchableOpacity
             onPress={handleConfirm}
             activeOpacity={0.9}
-            disabled={loading}
+            disabled={loading || total <= 0}
           >
             <LinearGradient
-              colors={["#2563eb", "#1e40af"]}
+              colors={
+                total > 0 && !loading
+                  ? ["#2563eb", "#1e40af"]
+                  : ["#cbd5e1", "#cbd5e1"]
+              }
               start={[0, 0]}
               end={[1, 1]}
-              style={styles.confirmButton}
+              style={[styles.confirmButton, (loading || total <= 0) && { opacity: 0.7 }]}
             >
               {loading ? (
                 <ActivityIndicator color="#fff" />
@@ -259,7 +333,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 16,
   },
   backButton: {
     marginRight: 8,
@@ -270,6 +344,27 @@ const styles = StyleSheet.create({
   pageTitle: {
     fontSize: 18,
     fontWeight: "700",
+    color: "#111",
+  },
+  balanceCard: {
+    backgroundColor: "#f8fafc",
+    padding: 16,
+    borderRadius: 14,
+    marginBottom: 20,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  balanceLabel: {
+    color: "#666",
+    fontSize: 13,
+  },
+  balanceValue: {
+    fontSize: 24,
+    fontWeight: "700",
+    marginTop: 4,
     color: "#111",
   },
   gridContainer: {

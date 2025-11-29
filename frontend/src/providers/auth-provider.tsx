@@ -1,40 +1,93 @@
-import { Session } from "@supabase/supabase-js";
-import { PropsWithChildren, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "../lib/supabase";
 
-export default function AuthProvider({ children }: PropsWithChildren) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState(null);
+export interface Usuario {
+  id: string;
+  email: string;
+  nombre: string;
+  telefono?: string;
+  dni?: string;
+  direccion?: string;
+  created_at?: string;
+}
+
+interface AuthContextType {
+  user: Usuario | null;
+  mounting: boolean;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useState<Usuario | null>(null);
   const [mounting, setMounting] = useState(true);
 
   useEffect(() => {
-    const fetchSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+    let mounted = true; // evita setState cuando desmonta
 
-      setSession(session);
+    const loadUser = async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
 
-      if (session) {
-        const { data: user, error } = await supabase
-          .from("users")
-          .select("*")
-          .eq("id", session.user.id)
-          .single();
-
-        if (error) {
-          console.log("error", error);
-        } else {
-          setUser(user);
+      if (!sessionData?.session?.user) {
+        if (mounted) {
+          setUser(null);
+          setMounting(false);
         }
+        return;
       }
 
-      setMounting(false);
+      const authUser = sessionData.session.user;
+
+      const { data: perfil } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", authUser.id)
+        .single();
+
+      if (mounted) {
+        setUser(perfil as Usuario);
+        setMounting(false);
+      }
     };
 
-    fetchSession();
-    supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+    loadUser();
+
+    // -- Listener de cambio de sesión (login / logout)
+    const { data: authListener } = supabase.auth.onAuthStateChange(() => {
+      loadUser();
     });
-  }, []);
-}
+
+    // -- Listener realtime SOLO una vez
+    const channel = supabase
+      .channel("users-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "users" },
+        (payload) => {
+          const updated = payload.new as Usuario;
+
+          // si no es el usuario logueado → ignorar
+          setUser((prev) => (prev?.id === updated.id ? updated : prev));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      mounted = false;
+      authListener?.subscription.unsubscribe();
+      supabase.removeChannel(channel);
+    };
+  }, []); // ⬅ se ejecuta UNA sola vez
+
+  return (
+    <AuthContext.Provider value={{ user, mounting }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth debe usarse dentro de AuthProvider");
+  return ctx;
+};
