@@ -14,7 +14,6 @@ import {
   Animated,
   Easing,
 } from "react-native";
-import * as Haptics from "expo-haptics";
 import { useRouter, Stack } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -88,18 +87,15 @@ export default function SendMoneyScreen() {
   }, [loading]);
 
   const onQuickSelect = (val: number) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setAmount(String(val));
     Keyboard.dismiss();
   };
 
   const handleQRScanned = (email: string) => {
     setRecipient(email);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
   const handleSend = async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     animatePressIn();
     setLoading(true);
 
@@ -150,7 +146,6 @@ export default function SendMoneyScreen() {
         throw new Error(error.message || "Error al realizar la transferencia");
 
       setBalance((prev) => +(prev - amountNum).toFixed(2));
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       const message = `💸 S/.${amountNum.toFixed(2)} enviados a ${
         receptorData.email
@@ -163,7 +158,6 @@ export default function SendMoneyScreen() {
       setAmount("");
       router.replace("/views/home");
     } catch (err: any) {
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert(
         "Error",
         err.message || "Ocurrió un problema al enviar dinero."
@@ -190,7 +184,6 @@ export default function SendMoneyScreen() {
         <View style={styles.header}>
           <TouchableOpacity
             onPress={async () => {
-              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               router.back();
             }}
             activeOpacity={0.7}
@@ -228,7 +221,7 @@ export default function SendMoneyScreen() {
             style={[
               styles.input,
               styles.inputFlex,
-              { backgroundColor: theme.text },
+              { backgroundColor: theme.card },
               recipient.length > 0 && !isEmailValid ? styles.inputError : null,
             ]}
             returnKeyType="next"
@@ -255,7 +248,7 @@ export default function SendMoneyScreen() {
             style={[
               styles.input,
               styles.amountInput,
-              { backgroundColor: theme.text },
+              { backgroundColor: theme.card },
             ]}
             editable={!loading}
           />
@@ -323,7 +316,6 @@ export default function SendMoneyScreen() {
         <TouchableOpacity
           activeOpacity={0.9}
           onPress={async () => {
-            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             setShowScanner(true);
           }}
         >

@@ -1,7 +1,6 @@
 import React, { useCallback, useState, useEffect } from "react";
 import {View,Text,FlatList,StyleSheet,RefreshControl,useColorScheme,Pressable,TouchableOpacity,ActivityIndicator,} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
 import { useRouter, Stack } from "expo-router";
 import Animated, { FadeInUp, FadeOut } from "react-native-reanimated";
 import { supabase } from "../lib/supabase";
@@ -121,7 +120,6 @@ export default function HistoryScreen() {
 
   // 🔄 Refrescar datos
   const onRefresh = useCallback(async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
     if (userId) {
       const txs = await fetchTransactions(userId);
@@ -172,7 +170,6 @@ export default function HistoryScreen() {
     return (
       <Animated.View entering={FadeInUp.delay(100).duration(300)} exiting={FadeOut}>
         <Pressable
-          onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
           style={({ pressed }) => [
             styles.itemContainer,
             {
@@ -216,7 +213,6 @@ export default function HistoryScreen() {
           {backgroundColor: theme.card, borderBottomColor: theme.border }]}>
         <TouchableOpacity
           onPress={async () => {
-            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             router.push("/views/home");
           }}
           activeOpacity={0.7}

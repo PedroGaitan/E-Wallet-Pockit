@@ -18,7 +18,6 @@ import {
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../lib/supabase";
 import { useTheme } from "../context/ThemeContext";
@@ -89,7 +88,6 @@ export default function RechargeScreen() {
   }, [selectedAmount, amount]);
 
   const handlePresetPress = async (value: number) => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setSelectedAmount(value);
     setAmount("");
@@ -108,19 +106,15 @@ export default function RechargeScreen() {
   const handleConfirm = async () => {
     const rechargeValue = total;
     if (rechargeValue <= 0) {
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return Alert.alert("Error", "Ingresa un monto válido para recargar.");
     }
 
     if (!userId) {
       return Alert.alert("Error", "No se pudo identificar el usuario.");
     }
-
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setLoading(true);
 
     try {
-      console.log("💸 Procesando recarga de:", rechargeValue);
 
       // 1️⃣ Actualizar el saldo del usuario
       const { error: updateError } = await supabase
@@ -143,16 +137,11 @@ export default function RechargeScreen() {
         });
 
       if (txError) {
-        console.error("❌ Error al registrar transacción:", txError);
         throw new Error("Error al registrar la transacción");
       }
 
-      console.log("✅ Recarga exitosa");
-
       // Actualizar el balance local
       setBalance((prev) => prev + rechargeValue);
-
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       const message = `✅ Recarga de S/.${rechargeValue.toFixed(2)} exitosa`;
       if (Platform.OS === "android") {
@@ -168,7 +157,6 @@ export default function RechargeScreen() {
 
     } catch (err: any) {
       console.error("❌ Error en recarga:", err);
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert("Error", err.message || "No se pudo procesar la recarga.");
     } finally {
       setLoading(false);
@@ -188,7 +176,6 @@ export default function RechargeScreen() {
           <View style={styles.header}>
             <TouchableOpacity
               onPress={async () => {
-                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 router.back();
               }}
               activeOpacity={0.7}
@@ -245,7 +232,7 @@ export default function RechargeScreen() {
             placeholder="Ingresa monto"
             keyboardType="number-pad"
             editable={!loading}
-            style={[styles.input, { backgroundColor: theme.text, color: theme.card }]}
+            style={[styles.input, { backgroundColor: theme.card, color: theme.text }]}
           />
 
           {/* Método de pago */}

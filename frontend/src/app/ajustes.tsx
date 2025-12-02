@@ -8,7 +8,6 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter, Stack } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -36,7 +35,6 @@ export default function AjustesScreen() {
   const [saving, setSaving] = useState(false);
 
   async function applyTheme(id: ThemeId) {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSaving(true);
 
     try {
@@ -87,7 +85,6 @@ export default function AjustesScreen() {
       <View style={styles.headerRow}>
         <Pressable
           onPress={() => {
-            Haptics.selectionAsync();
             router.back();
           }}
           style={styles.backButton}

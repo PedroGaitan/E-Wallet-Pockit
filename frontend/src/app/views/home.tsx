@@ -2,7 +2,6 @@ import React, { useEffect, useState, useCallback } from "react";
 import {View,Text,TouchableOpacity,FlatList,StyleSheet,Platform,ActivityIndicator,RefreshControl,} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../providers/auth-provider";
@@ -130,12 +129,10 @@ export default function HomeScreen() {
   };
 
   const toggleBalance = async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setShowBalance((prev) => !prev);
   };
 
   const onViewAllTransactions = async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     router.push("/historial");
   };
 

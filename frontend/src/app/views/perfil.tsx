@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/src/providers/auth-provider";
 import { supabase } from "../../lib/supabase";
@@ -40,14 +39,13 @@ export default function PerfilScreen() {
     .toUpperCase();
 
   const handleOptionPress = (action: string) => {
-    Haptics.selectionAsync();
     if (action === "ajustes") router.push("/ajustes");
     if (action === "Informacion Personal") router.push("/informacionpersonal");
     if (action === "Qr Personal") router.push("/personal_qr");
+    if (action === "soporte") router.push("../support");
   };
 
   const handleLogout = async () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     await supabase.auth.signOut();
     router.replace("/auth/login");
   };
@@ -61,7 +59,7 @@ export default function PerfilScreen() {
     { icon: "shield-outline", label: "Seguridad" },
     { icon: "notifications-outline", label: "Notificaciones" },
     { icon: "settings-outline", label: "Ajustes", action: "ajustes" },
-    { icon: "call-outline", label: "Soporte" },
+    { icon: "call-outline", label: "Soporte", action: "soporte" },
     { icon: "qr-code-outline", label: "QR", action: "Qr Personal" },
   ];
 

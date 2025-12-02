@@ -15,7 +15,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Stack, useRouter } from "expo-router";
 import { supabase } from "../lib/supabase";
-import {useAuth } from "../providers/auth-provider";
 import { useTheme } from "../context/ThemeContext";
 import { SafeAreaView } from "react-native-safe-area-context";
 
