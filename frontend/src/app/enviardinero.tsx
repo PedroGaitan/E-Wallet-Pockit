@@ -36,8 +36,11 @@ export default function SendMoneyScreen() {
 
   const amountNum = parseFloat(amount.replace(",", ".")) || 0;
   const isEmailValid = /^\S+@\S+\.\S+$/.test(recipient.trim());
+  const input = recipient.trim();
+  const isEmailInput = /\S+@\S+\.\S+/.test(input);
+  const isRecipientValid = isEmailInput || input.length >= 2;
   const exceedsBalance = amountNum > balance;
-  const isFormValid = isEmailValid && amountNum > 0 && !exceedsBalance;
+  const isFormValid = isRecipientValid && amountNum > 0 && !exceedsBalance;
 
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const buttonProgress = useRef(new Animated.Value(0)).current;
@@ -56,7 +59,7 @@ export default function SendMoneyScreen() {
         .eq("email", user.email)
         .single();
 
-      if (!error && data) setBalance(data.balance);
+      if (!error && data) setBalance(data.balance ?? 0);
     })();
   }, []);
 
@@ -107,26 +110,56 @@ export default function SendMoneyScreen() {
 
       const { data: remitenteData, error: remitenteError } = await supabase
         .from("users")
-        .select("id, email, balance")
+        .select("id, email, nombre, balance")
         .eq("email", user.email)
         .single();
 
       if (remitenteError || !remitenteData)
         throw new Error("Remitente no encontrado");
 
-      const cleanEmail = recipient.trim().toLowerCase();
-      const { data: receptorData, error: receptorError } = await supabase
-        .from("users")
-        .select("id, email")
-        .eq("email", cleanEmail)
-        .single();
+      const input = recipient.trim();
 
-      if (receptorError || !receptorData) {
-        Alert.alert("Error", "Usuario no encontrado. Verifica el correo.");
-        throw new Error("Receptor no encontrado");
-      }
+// 1. Verificar si es email
+const isEmailInput = /\S+@\S+\.\S+/.test(input);
 
-      if (amountNum > remitenteData.balance) {
+// 2. Construir query
+let query = supabase.from("users").select("id, email, nombre");
+
+if (isEmailInput) {
+  // Buscar por email EXACTO
+  query = query.ilike("email", input.toLowerCase());
+} else {
+  // Buscar por nombre usando coincidencia parcial
+  query = query.ilike("nombre", `%${input}%`);
+}
+
+// 3. Ejecutar búsqueda
+const { data: receptorList, error: receptorError } = await query;
+
+if (receptorError) {
+  console.error(receptorError);
+  Alert.alert("Error", "Hubo un problema buscando al usuario.");
+  throw new Error("Error buscando receptor");
+}
+
+// 4. Ningún usuario encontrado
+if (!receptorList || receptorList.length === 0) {
+  Alert.alert("Error", "No existe ningún usuario con ese nombre o correo.");
+  throw new Error("Usuario no encontrado");
+}
+
+// 5. Si el nombre coincide con varios usuarios
+if (!isEmailInput && receptorList.length > 1) {
+  Alert.alert(
+    "Nombre duplicado",
+    "Hay varias personas con ese nombre. Ingresa el correo para identificarlo."
+  );
+  throw new Error("Nombre ambiguo");
+}
+
+const receptorData = receptorList[0]; // ← Usuario definitivo
+
+      if (amountNum > (remitenteData.balance ?? 0)) {
         Alert.alert("Error", "Saldo insuficiente");
         return;
       }
@@ -202,7 +235,7 @@ export default function SendMoneyScreen() {
             Saldo disponible
           </Text>
           <Text style={[styles.balanceValue, { color: theme.text }]}>
-            S/.{balance.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+            S/.{(balance ?? 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
           </Text>
         </View>
 
@@ -221,16 +254,20 @@ export default function SendMoneyScreen() {
             style={[
               styles.input,
               styles.inputFlex,
-              { backgroundColor: theme.card },
+              { backgroundColor: theme.text },
               recipient.length > 0 && !isEmailValid ? styles.inputError : null,
             ]}
             returnKeyType="next"
             editable={!loading}
           />
         </View>
-        {recipient.length > 0 && !isEmailValid && (
-          <Text style={styles.errorText}>Introduce un correo válido</Text>
-        )}
+        {recipient.length > 0 &&
+ !isEmailValid &&
+ recipient.trim().length < 3 && (
+  <Text style={styles.errorText}>
+    Introduce un correo o nombre válido
+  </Text>
+)}
 
         <Text style={[styles.label, { color: theme.text, marginTop: 12 }]}>
           Monto a enviar
@@ -248,7 +285,7 @@ export default function SendMoneyScreen() {
             style={[
               styles.input,
               styles.amountInput,
-              { backgroundColor: theme.card },
+              { backgroundColor: theme.text },
             ]}
             editable={!loading}
           />

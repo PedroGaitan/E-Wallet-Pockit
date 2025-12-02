@@ -257,7 +257,7 @@ export default function AjustesScreen() {
 
             {[
               ["Versión", "1.0.0"],
-              ["Última actualización", "2 Dic 2024"],
+              ["Última actualización", "29 Nov 2025"],
             ].map(([label, val], i) => (
               <View key={i} style={[styles.row, { borderColor: theme.border }]}>
                 <Text style={[styles.rowMuted, { color: theme.text }]}>{label}</Text>
@@ -290,7 +290,7 @@ export default function AjustesScreen() {
         );
 
       default:
-        return null; // 👈 Necesario para TypeScript
+        return null; 
     }
   }
 
@@ -318,8 +318,6 @@ export default function AjustesScreen() {
     </SafeAreaView>
   );
 }
-
-// ---------------- STYLES -----------------
 
 const styles = StyleSheet.create({
   safeArea: {

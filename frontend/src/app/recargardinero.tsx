@@ -50,7 +50,7 @@ export default function RechargeScreen() {
         .single();
 
       if (!error && data) {
-        setBalance(data.balance);
+        setBalance(data.balance ?? 0);
         setUserId(data.id);}
     })();
   }, []);
@@ -190,7 +190,7 @@ export default function RechargeScreen() {
           <View style={[styles.balanceCard, { backgroundColor: theme.card }]}>
             <Text style={[styles.balanceLabel, { color: theme.subText }]}>Saldo actual</Text>
              <Text style={[styles.balanceValue, { color: theme.text }]}>
-              S/.{balance.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+              S/.{(balance ?? 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
             </Text>
           </View>
 
