@@ -1,27 +1,21 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
-
-if (!apiKey) {
-  console.warn("⚠️ Falta la API KEY de Gemini.");
-}
-
-const genAI = new GoogleGenerativeAI(apiKey || "");
-
-const model = genAI.getGenerativeModel({ 
-    model: "gemini-2.0-flash" 
-});
+import { supabase } from "./supabase";
 
 export async function askGemini(message: string) {
   try {
-    const result = await model.generateContent([
-      { text: message }
-    ]);
+    const { data, error } = await supabase.functions.invoke("ai", {
+      body: { message },
+    });
 
-    return result.response.text();
+    console.log("RAW DATA:", data);
+    console.log("RAW ERROR:", error);
 
-  } catch (err) {
-    console.error("Gemini error:", err);
-    return "Hubo un error al procesar tu mensaje con la IA.";
+    if (error) {
+      return "Error al conectar con soporte. Intenta nuevamente.";
+    }
+
+    return data?.reply ?? "Respuesta vacía.";
+  } catch (e) {
+    console.log("Invoke exception:", e);
+    return "Error al conectar con soporte. Intenta nuevamente.";
   }
 }

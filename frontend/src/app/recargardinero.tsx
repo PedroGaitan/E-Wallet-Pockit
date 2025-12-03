@@ -22,6 +22,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../lib/supabase";
 import { useTheme } from "../context/ThemeContext";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { recargarDineroBackend } from "../lib/recharge";
+import { validarLimite } from "../lib/limites";
 
 const PRESET_AMOUNTS = [50, 100, 200, 300, 500, 1000];
 
@@ -102,66 +104,50 @@ export default function RechargeScreen() {
 
   const total = selectedAmount || parseFloat(amount) || 0;
 
-  // 💰 Confirmar recarga y registrar en Supabase
-  const handleConfirm = async () => {
-    const rechargeValue = total;
-    if (rechargeValue <= 0) {
-      return Alert.alert("Error", "Ingresa un monto válido para recargar.");
-    }
+ const handleConfirm = async () => {
+  const rechargeValue = total;
 
-    if (!userId) {
-      return Alert.alert("Error", "No se pudo identificar el usuario.");
-    }
-    setLoading(true);
+  if (rechargeValue <= 0) {
+    return Alert.alert("Error", "Ingresa un monto válido.");
+  }
 
-    try {
+  if (!userId) {
+    return Alert.alert("Error", "Usuario no identificado.");
+  }
 
-      // 1️⃣ Actualizar el saldo del usuario
-      const { error: updateError } = await supabase
-        .from("users")
-        .update({ balance: balance + rechargeValue })
-        .eq("id", userId);
+  setLoading(true);
 
-      if (updateError) {
-        throw new Error("Error al actualizar el saldo");
-      }
+  try {
+    // 1️⃣ Validación de límites
+    await validarLimite(userId, rechargeValue, "recarga");
 
-      // 2️⃣ Registrar la transacción (remitente = receptor = mismo usuario)
-      const { error: txError } = await supabase
-        .from("transactions")
-        .insert({
-          remitente_id: userId,
-          receptor_id: userId,
-          cantidad: rechargeValue,
-          created_at: new Date().toISOString(),
-        });
+    // 2️⃣ Recarga en el backend real (tu función)
+    await recargarDineroBackend(rechargeValue);
 
-      if (txError) {
-        throw new Error("Error al registrar la transacción");
-      }
+    // 3️⃣ Actualizar saldo
+    const { data: userData } = await supabase
+      .from("users")
+      .select("balance")
+      .eq("id", userId)
+      .single();
 
-      // Actualizar el balance local
-      setBalance((prev) => prev + rechargeValue);
+    setBalance(userData?.balance ?? 0);
 
-      const message = `✅ Recarga de S/.${rechargeValue.toFixed(2)} exitosa`;
-      if (Platform.OS === "android") {
-        ToastAndroid.show(message, ToastAndroid.LONG);
-      } else {
-        Alert.alert("Recarga completada", message);
-      }
+    ToastAndroid.show(
+      `✅ Recarga de S/.${rechargeValue.toFixed(2)} exitosa`,
+      ToastAndroid.LONG
+    );
 
-      // Limpiar y volver al home
-      setSelectedAmount(null);
-      setAmount("");
-      router.replace("/views/home");
+    setSelectedAmount(null);
+    setAmount("");
+    router.replace("/views/home");
 
-    } catch (err: any) {
-      console.error("❌ Error en recarga:", err);
-      Alert.alert("Error", err.message || "No se pudo procesar la recarga.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  } catch (err: any) {
+    Alert.alert("Límite superado", err.message || "Ocurrió un error.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <KeyboardAvoidingView

@@ -25,7 +25,7 @@ interface Message {
   timestamp: string;
 }
 
-const QUICK_REPLIES = ['Sí, gracias', 'No, necesito más ayuda', 'Hablar con un supervisor'];
+const QUICK_REPLIES = ['💰 Saldo', '🔄 Transferencias', '👨‍💼 Hablar con un agente real'];
 
 export default function ChatSupportScreen() {
   const { theme } = useTheme();
@@ -100,10 +100,60 @@ export default function ChatSupportScreen() {
     }
   };
 
-  const handleQuickReply = (text: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setMessage(text);
+  const handleQuickReply = async (text: string) => {
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+  // Mostrar como mensaje del usuario
+  const userMsg: Message = {
+    id: Date.now().toString(),
+    text,
+    sender: 'user',
+    timestamp: timeNow(),
   };
+
+  pushMessage(userMsg);
+
+  // 👉 CASO: HABLAR CON AGENTE REAL
+  if (text.includes('agente')) {
+    setTimeout(() => {
+      const agentMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        text: '📞 Puedes comunicarte con un agente real al número: 800-123-4267',
+        sender: 'agent',
+        timestamp: timeNow(),
+      };
+      pushMessage(agentMsg);
+    }, 800);
+    return;
+  }
+
+  // 👉 CASO SALDO O TRANSFERENCIAS → SE ENVÍA A GEMINI
+  setIsTyping(true);
+
+  try {
+    const aiText = await askGemini(text);
+
+    await new Promise(res => setTimeout(res, 1200));
+
+    const aiMsg: Message = {
+      id: (Date.now() + 2).toString(),
+      text: aiText ?? 'No pude obtener respuesta.',
+      sender: 'agent',
+      timestamp: timeNow(),
+    };
+
+    setIsTyping(false);
+    pushMessage(aiMsg);
+  } catch {
+    setIsTyping(false);
+    pushMessage({
+      id: (Date.now() + 3).toString(),
+      text: 'Error al procesar tu solicitud.',
+      sender: 'agent',
+      timestamp: timeNow(),
+    });
+  }
+};
 
   return (
   <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>

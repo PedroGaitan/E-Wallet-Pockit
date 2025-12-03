@@ -21,6 +21,8 @@ import { supabase } from "../lib/supabase";
 import { useTheme } from "../context/ThemeContext";
 import QRScanner from "../components/QRScanner";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { validarLimite } from "../lib/limites";
+import { enviarDineroBackend } from "../lib/sendMoney";
 
 
 const QUICK_AMOUNTS = [50, 100, 500];
@@ -127,7 +129,7 @@ let query = supabase.from("users").select("id, email, nombre");
 
 if (isEmailInput) {
   // Buscar por email EXACTO
-  query = query.ilike("email", input.toLowerCase());
+  query = query.eq("email", input.toLowerCase());
 } else {
   // Buscar por nombre usando coincidencia parcial
   query = query.ilike("nombre", `%${input}%`);
@@ -169,14 +171,13 @@ const receptorData = receptorList[0]; // ← Usuario definitivo
         return;
       }
 
-      const { data, error } = await supabase.rpc("transfer_money", {
-        sender_id: remitenteData.id,
-        receiver_id: receptorData.id,
-        amount: amountNum,
-      });
+      await validarLimite(remitenteData.id, amountNum, "transferencia");
 
-      if (error)
-        throw new Error(error.message || "Error al realizar la transferencia");
+      await enviarDineroBackend(
+  remitenteData.id,
+  receptorData.id,
+  amountNum
+);
 
       setBalance((prev) => +(prev - amountNum).toFixed(2));
 
@@ -262,8 +263,7 @@ const receptorData = receptorList[0]; // ← Usuario definitivo
           />
         </View>
         {recipient.length > 0 &&
- !isEmailValid &&
- recipient.trim().length < 3 && (
+ !isEmailValid && recipient.trim().length < 3 && (
   <Text style={styles.errorText}>
     Introduce un correo o nombre válido
   </Text>
