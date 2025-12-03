@@ -35,7 +35,7 @@ export default function ChatSupportScreen() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: Date.now().toString(),
-      text: '¡Hola! Soy Ana, tu agente de soporte. ¿En qué puedo ayudarte hoy?',
+      text: '¡Hola! Soy Pockit AI, tu agente de soporte. ¿En qué puedo ayudarte hoy?',
       sender: 'agent',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
@@ -180,7 +180,7 @@ export default function ChatSupportScreen() {
           <View style={styles.onlineDot} />
         </View>
         <View style={{ marginLeft: 10 }}>
-          <Text style={[styles.agentName, { color: theme.text }]}>Ana García</Text>
+          <Text style={[styles.agentName, { color: theme.text }]}>Pockit AI</Text>
           <Text style={[styles.agentStatus, { color: theme.subText }]}>En línea • Soporte</Text>
         </View>
       </View>

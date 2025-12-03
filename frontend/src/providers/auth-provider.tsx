@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "../lib/supabase";
+import { logActivity, getRecentActivity } from "../lib/security";
+import * as Device from "expo-device";
 
 export interface Usuario {
   id: string;
@@ -23,11 +25,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [mounting, setMounting] = useState(true);
 
   useEffect(() => {
-    let mounted = true; // evita setState cuando desmonta
+    let mounted = true;
 
     const loadUser = async () => {
       const { data: sessionData } = await supabase.auth.getSession();
 
+      // Si NO hay sesión
       if (!sessionData?.session?.user) {
         if (mounted) {
           setUser(null);
@@ -38,6 +41,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       const authUser = sessionData.session.user;
 
+      // ----------- 🔥 LOG #1 → Registrar Login / Refresh Session -----------
+      logActivity(authUser.id, "Inicio de sesión");
+
+      // ----------- 🔥 LOG #2 → Detectar "Nuevo dispositivo" -----------
+      try {
+        const model = Device.modelName;
+
+        const history = await getRecentActivity(authUser.id, 30);
+        const previousModels = history.map((h) => h.device_model);
+
+        if (!previousModels.includes(model)) {
+          logActivity(authUser.id, "Inicio desde un nuevo dispositivo");
+        }
+      } catch (e) {
+        console.log("Error checking device:", e);
+      }
+
+      // Cargar perfil del usuario
       const { data: perfil } = await supabase
         .from("users")
         .select("*")
@@ -53,11 +74,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     loadUser();
 
     // -- Listener de cambio de sesión (login / logout)
-    const { data: authListener } = supabase.auth.onAuthStateChange(() => {
-      loadUser();
-    });
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        // LOGIN
+        if (event === "SIGNED_IN" && session?.user) {
+          logActivity(session.user.id, "Inicio de sesión");
+        }
 
-    // -- Listener realtime SOLO una vez
+        // LOGOUT
+        if (event === "SIGNED_OUT" && user?.id) {
+          logActivity(user.id, "Cierre de sesión");
+        }
+
+        loadUser();
+      }
+    );
+
+    // -- Listener realtime usuarios
     const channel = supabase
       .channel("users-realtime")
       .on(
@@ -65,8 +98,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         { event: "*", schema: "public", table: "users" },
         (payload) => {
           const updated = payload.new as Usuario;
-
-          // si no es el usuario logueado → ignorar
           setUser((prev) => (prev?.id === updated.id ? updated : prev));
         }
       )
@@ -77,7 +108,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       authListener?.subscription.unsubscribe();
       supabase.removeChannel(channel);
     };
-  }, []); // ⬅ se ejecuta UNA sola vez
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, mounting }}>

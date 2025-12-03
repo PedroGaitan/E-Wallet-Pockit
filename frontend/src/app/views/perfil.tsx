@@ -43,6 +43,7 @@ export default function PerfilScreen() {
     if (action === "Informacion Personal") router.push("/informacionpersonal");
     if (action === "Qr Personal") router.push("/personal_qr");
     if (action === "soporte") router.push("../support");
+    if (action === "seguridad") router.push("/seguridad")
   };
 
   const handleLogout = async () => {
@@ -56,8 +57,7 @@ export default function PerfilScreen() {
       label: "Información personal",
       action: "Informacion Personal",
     },
-    { icon: "shield-outline", label: "Seguridad" },
-    { icon: "notifications-outline", label: "Notificaciones" },
+    { icon: "shield-outline", label: "Seguridad",action: "seguridad" },
     { icon: "settings-outline", label: "Ajustes", action: "ajustes" },
     { icon: "call-outline", label: "Soporte", action: "soporte" },
     { icon: "qr-code-outline", label: "QR", action: "Qr Personal" },
