@@ -8,12 +8,12 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
-import { useAuth } from "../providers/auth-provider";
-import { useTheme } from "../context/ThemeContext";
-import { supabase } from "../lib/supabase";
+import { useAuth } from "../../providers/auth-provider";
+import { useTheme } from "../../context/ThemeContext";
+import { supabase } from "../../lib/supabase";
 import Purchases from 'react-native-purchases';
 
-export default async function QrScreen() {
+export default function QrScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { theme } = useTheme();
@@ -42,10 +42,20 @@ export default async function QrScreen() {
     loadQrCode();
   }, [user]);
 
-  const customerInfo = await Purchases.getCustomerInfo();
-  if(!customerInfo.entitlements.active["premium"]) {
-    router.replace("/views/plans");
-  }
+  useEffect(() => {
+    const checkPremium = async () => {
+      try {
+        const customerInfo = await Purchases.getCustomerInfo();
+        if(!customerInfo.entitlements.active["premium"]) {
+          //router.replace("/views/plans");
+        }
+      } catch (error) {
+        console.error("Error checking premium status:", error);
+      }
+    };
+
+    checkPremium();
+  }, []);
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <Stack.Screen options={{ headerShown: false }} />

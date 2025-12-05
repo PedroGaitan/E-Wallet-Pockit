@@ -46,7 +46,6 @@ export default function PerfilScreen() {
     Haptics.selectionAsync();
     if (action === "ajustes") router.push("/ajustes");
     if (action === "Informacion Personal") router.push("/informacionpersonal");
-    if (action === "Qr Personal") router.push("/personal_qr");
   };
 
   const handleLogout = async () => {
@@ -65,7 +64,6 @@ export default function PerfilScreen() {
     { icon: "notifications-outline", label: "Notificaciones" },
     { icon: "settings-outline", label: "Ajustes", action: "ajustes" },
     { icon: "call-outline", label: "Soporte" },
-    { icon: "qr-code-outline", label: "QR", action: "Qr Personal" },
   ];
 
   return (
