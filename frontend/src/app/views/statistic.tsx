@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   ScrollView,
   Dimensions,
 } from "react-native";
+import { useRouter, useFocusEffect } from "expo-router";
 import { LineChart } from "react-native-chart-kit";
 import RevenueCatUI, { PAYWALL_RESULT } from "react-native-purchases-ui";
 import Purchases from "react-native-purchases";
@@ -47,6 +48,7 @@ type MonthlyData = {
 
 export default function StatisticScreen() {
   const { theme } = useTheme();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [isPremium, setIsPremium] = useState(false);
   const [monthlyData, setMonthlyData] = useState<MonthlyData>({
@@ -57,9 +59,11 @@ export default function StatisticScreen() {
   const [totalIncome, setTotalIncome] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
 
-  useEffect(() => {
-    initializeScreen();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      initializeScreen();
+    }, [])
+  );
 
   const initializeScreen = async () => {
     try {
@@ -111,6 +115,9 @@ export default function StatisticScreen() {
       ) {
         setIsPremium(true);
         await fetchUserAndStats();
+      } else {
+        // User dismissed paywall without purchasing - navigate to home
+        router.replace("/views/home");
       }
     } catch (error) {
       console.error("Paywall error:", error);
@@ -241,7 +248,7 @@ export default function StatisticScreen() {
       <View style={styles.summaryRow}>
         <View style={[styles.summaryCard, { backgroundColor: theme.card }]}>
           <Text style={[styles.summaryLabel, { color: theme.subText }]}>
-            Ingresos (6 meses)
+            Ingresos recientes
           </Text>
           <Text style={[styles.summaryValue, { color: "#4CAF50" }]}>
             +S/. {totalIncome.toFixed(2)}
@@ -249,7 +256,7 @@ export default function StatisticScreen() {
         </View>
         <View style={[styles.summaryCard, { backgroundColor: theme.card }]}>
           <Text style={[styles.summaryLabel, { color: theme.subText }]}>
-            Gastos (6 meses)
+            Gastos recientes
           </Text>
           <Text style={[styles.summaryValue, { color: "#E53935" }]}>
             -S/. {totalExpenses.toFixed(2)}
