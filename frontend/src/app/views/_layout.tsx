@@ -15,11 +15,20 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="historial"
+        name="QR"
         options={{
-          title: 'Historial',
+          title: 'QR',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="time" size={size} color={color} />
+            <Ionicons name="qr-code" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="statistic"
+        options={{
+          title: 'Estadísticas',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="stats-chart" size={size} color={color} />
           ),
         }}
       />
