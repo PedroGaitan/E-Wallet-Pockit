@@ -14,25 +14,45 @@ import {
 import { supabase } from "../../lib/supabase";
 import { router } from "expo-router";
 
-export default function Auth() {
+export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function signInWithEmail() {
-    if (!email || !password) {
+  async function signUpWithEmail() {
+    if (!email || !password || !confirmPassword) {
       Alert.alert("Error", "Por favor completa todos los campos");
       return;
     }
 
+    if (password !== confirmPassword) {
+      Alert.alert("Error", "Las contraseñas no coinciden");
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert("Error", "La contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.signUp({
       email: email,
       password: password,
     });
 
     if (error) {
       Alert.alert("Error", error.message);
+    } else if (!session) {
+      Alert.alert(
+        "Verificación requerida",
+        "Por favor revisa tu correo para verificar tu cuenta"
+      );
+      router.replace("/auth/login");
     } else {
       router.replace("/views/home");
     }
@@ -54,7 +74,7 @@ export default function Auth() {
             style={styles.logoImage}
           />
           <Text style={styles.logoText}>Pockit</Text>
-          <Text style={styles.subText}>Tu billetera digital</Text>
+          <Text style={styles.subText}>Crea tu cuenta</Text>
         </View>
 
         <View style={styles.formContainer}>
@@ -76,21 +96,30 @@ export default function Auth() {
             placeholderTextColor="#666"
             autoCapitalize="none"
           />
+          <TextInput
+            style={styles.input}
+            onChangeText={setConfirmPassword}
+            value={confirmPassword}
+            secureTextEntry={true}
+            placeholder="Confirmar contraseña"
+            placeholderTextColor="#666"
+            autoCapitalize="none"
+          />
 
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={signInWithEmail}
+            onPress={signUpWithEmail}
             disabled={loading}
           >
             <Text style={styles.buttonText}>
-              {loading ? "Iniciando sesión..." : "Iniciar sesión"}
+              {loading ? "Creando cuenta..." : "Crear cuenta"}
             </Text>
           </TouchableOpacity>
 
-          <View style={styles.registerContainer}>
-            <Text style={styles.registerText}>¿No tienes una cuenta? </Text>
-            <TouchableOpacity onPress={() => router.push("/auth/register")}>
-              <Text style={styles.registerLink}>Crear cuenta</Text>
+          <View style={styles.loginContainer}>
+            <Text style={styles.loginText}>¿Ya tienes una cuenta? </Text>
+            <TouchableOpacity onPress={() => router.replace("/auth/login")}>
+              <Text style={styles.loginLink}>Iniciar sesión</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -110,8 +139,8 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: "center",
-    marginTop: 100,
-    marginBottom: 50,
+    marginTop: 80,
+    marginBottom: 40,
   },
   logoText: {
     fontSize: 48,
@@ -156,16 +185,16 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderRadius: 20,
   },
-  registerContainer: {
+  loginContainer: {
     flexDirection: "row",
     justifyContent: "center",
     marginTop: 30,
   },
-  registerText: {
+  loginText: {
     color: "#666666",
     fontSize: 14,
   },
-  registerLink: {
+  loginLink: {
     color: "#000000",
     fontSize: 14,
     fontWeight: "bold",
