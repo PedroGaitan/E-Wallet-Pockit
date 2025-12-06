@@ -1,3 +1,21 @@
+// REVENUECAT DISABLED FOR PRODUCTION BUILD
+// Stub functions that return default values
+/*
+export const checkSubscriptionStatus = async (): Promise<boolean> => {
+  return false; // No premium without RevenueCat
+};
+
+export const getOfferings = async () => {
+  return null;
+};
+
+export const purchasePackage = async (_packageToPurchase: unknown) => {
+  return false;
+};
+
+export const restorePurchases = async (): Promise<boolean> => {
+  return false;
+};
 import Purchases from "react-native-purchases";
 
 const ENTITLEMENT_ID = "Pockit Premium";
@@ -44,3 +62,4 @@ export const restorePurchases = async (): Promise<boolean> => {
     return false;
   }
 };
+*/

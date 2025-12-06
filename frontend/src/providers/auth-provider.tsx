@@ -7,7 +7,7 @@ import {
   ReactNode,
 } from "react";
 import { supabase } from "../lib/supabase";
-import Purchases from "react-native-purchases";
+// import Purchases from "react-native-purchases";
 
 export interface Usuario {
   id: string;
@@ -26,8 +26,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// REVENUECAT DISABLED FOR PRODUCTION BUILD
 // Track last RevenueCat user to avoid duplicate login calls
-let lastRevenueCatUserId: string | null = null;
+// let lastRevenueCatUserId: string | null = null;
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<Usuario | null>(null);
@@ -43,14 +44,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (mounted) {
           setUser(null);
           setMounting(false);
-          try {
-            // Solo hacer logout si el usuario NO es anónimo
-            const customerInfo = await Purchases.getCustomerInfo();
-            if (!customerInfo.originalAppUserId.startsWith("$RCAnonymousID:")) {
-              await Purchases.logOut();
-              lastRevenueCatUserId = null;
-            }
-          } catch {}
+          // REVENUECAT DISABLED FOR PRODUCTION BUILD
+          // try {
+          //   // Solo hacer logout si el usuario NO es anónimo
+          //   const customerInfo = await Purchases.getCustomerInfo();
+          //   if (!customerInfo.originalAppUserId.startsWith("$RCAnonymousID:")) {
+          //     await Purchases.logOut();
+          //     lastRevenueCatUserId = null;
+          //   }
+          // } catch {}
         }
         return;
       }
@@ -67,19 +69,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(perfil as Usuario);
         setMounting(false);
 
+        // REVENUECAT DISABLED FOR PRODUCTION BUILD
         // Identify user in RevenueCat (only if different from last login)
-        if (authUser.id && authUser.id !== lastRevenueCatUserId) {
-          try {
-            await Purchases.logIn(authUser.id);
-            lastRevenueCatUserId = authUser.id;
-          } catch (e) {
-            // Ignore duplicate request errors (code 16, statusCode 429)
-            const error = e as { code?: number };
-            if (error.code !== 16) {
-              console.error("RevenueCat login error:", e);
-            }
-          }
-        }
+        // if (authUser.id && authUser.id !== lastRevenueCatUserId) {
+        //   try {
+        //     await Purchases.logIn(authUser.id);
+        //     lastRevenueCatUserId = authUser.id;
+        //   } catch (e) {
+        //     // Ignore duplicate request errors (code 16, statusCode 429)
+        //     const error = e as { code?: number };
+        //     if (error.code !== 16) {
+        //       console.error("RevenueCat login error:", e);
+        //     }
+        //   }
+        // }
       }
     };
 

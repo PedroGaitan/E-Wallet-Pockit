@@ -1,3 +1,31 @@
+// This screen requires RevenueCat which is commented out
+/*
+import React from "react";
+import { View, Text, StyleSheet } from "react-native";
+import { useTheme } from "../../context/ThemeContext";
+
+export default function StatisticScreen() {
+  const { theme } = useTheme();
+
+  return (
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <Text style={[styles.text, { color: theme.text }]}>
+        Estadísticas - Próximamente
+      </Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  text: {
+    fontSize: 18,
+  },
+});
 import React, { useState, useCallback } from "react";
 import {
   View,
@@ -243,8 +271,6 @@ export default function StatisticScreen() {
         Estadísticas de tu cuenta
       </Text>
       <Text style={styles.premiumText}>¡Bienvenido!</Text>
-
-      {/* Summary Cards */}
       <View style={styles.summaryRow}>
         <View style={[styles.summaryCard, { backgroundColor: theme.card }]}>
           <Text style={[styles.summaryLabel, { color: theme.subText }]}>
@@ -408,3 +434,4 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 });
+*/

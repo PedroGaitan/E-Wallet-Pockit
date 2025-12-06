@@ -27,8 +27,13 @@ export default function QRScanner({
 
   useEffect(() => {
     const getPermissions = async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      setHasPermission(status === "granted");
+      try {
+        const { status } = await Camera.requestCameraPermissionsAsync();
+        setHasPermission(status === "granted");
+      } catch (err) {
+        console.error("Camera permission error:", err);
+        setHasPermission(false);
+      }
     };
 
     if (visible) {
@@ -43,7 +48,15 @@ export default function QRScanner({
 
     try {
       // The data should be a user ID
-      const userId = data.trim();
+      const userId = data?.trim();
+
+      console.log("QR Scanned data:", userId);
+
+      if (!userId) {
+        Alert.alert("Error", "Código QR inválido");
+        setScanned(false);
+        return;
+      }
 
       // Fetch the user's email from Supabase
       const { data: userData, error } = await supabase
@@ -52,8 +65,10 @@ export default function QRScanner({
         .eq("id", userId)
         .single();
 
-      if (error || !userData) {
-        Alert.alert("Error", "Usuario no encontrado");
+      console.log("Supabase response:", { userData, error });
+
+      if (error || !userData?.email) {
+        Alert.alert("Error", `Usuario no encontrado. ID: ${userId}`);
         setScanned(false);
         return;
       }
@@ -62,6 +77,7 @@ export default function QRScanner({
       onScanned(userData.email);
       onClose();
     } catch (err) {
+      console.error("QR Scan error:", err);
       Alert.alert("Error", "Código QR inválido");
       setScanned(false);
     }

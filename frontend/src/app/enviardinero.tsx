@@ -55,7 +55,7 @@ export default function SendMoneyScreen() {
         .eq("email", user.email)
         .single();
 
-      if (!error && data) setBalance(data.balance);
+      if (!error && data) setBalance(data.balance ?? 0);
     })();
   }, []);
 
@@ -207,7 +207,10 @@ export default function SendMoneyScreen() {
             Saldo disponible
           </Text>
           <Text style={[styles.balanceValue, { color: theme.text }]}>
-            S/.{balance.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+            S/.
+            {(balance ?? 0).toLocaleString("es-PE", {
+              minimumFractionDigits: 2,
+            })}
           </Text>
         </View>
 
