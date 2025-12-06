@@ -25,6 +25,10 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Track last RevenueCat user to avoid duplicate login calls
+let lastRevenueCatUserId: string | null = null;
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<Usuario | null>(null);
   const [mounting, setMounting] = useState(true);
@@ -40,7 +44,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(null);
           setMounting(false);
           try {
-            await Purchases.logOut();
+            // Solo hacer logout si el usuario NO es anónimo
+            const customerInfo = await Purchases.getCustomerInfo();
+            if (!customerInfo.originalAppUserId.startsWith("$RCAnonymousID:")) {
+              await Purchases.logOut();
+              lastRevenueCatUserId = null;
+            }
           } catch {}
         }
         return;
@@ -58,12 +67,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(perfil as Usuario);
         setMounting(false);
 
-        // Identify user in RevenueCat for customer tracking
-        if (authUser.id) {
+        // Identify user in RevenueCat (only if different from last login)
+        if (authUser.id && authUser.id !== lastRevenueCatUserId) {
           try {
             await Purchases.logIn(authUser.id);
+            lastRevenueCatUserId = authUser.id;
           } catch (e) {
-            console.error("RevenueCat login error:", e);
+            // Ignore duplicate request errors (code 16, statusCode 429)
+            const error = e as { code?: number };
+            if (error.code !== 16) {
+              console.error("RevenueCat login error:", e);
+            }
           }
         }
       }
