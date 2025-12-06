@@ -8,9 +8,9 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
-import { useAuth } from "../providers/auth-provider";
-import { useTheme } from "../context/ThemeContext";
-import { supabase } from "../lib/supabase";
+import { useAuth } from "../../providers/auth-provider";
+import { useTheme } from "../../context/ThemeContext";
+import { supabase } from "../../lib/supabase";
 
 export default function QrScreen() {
   const router = useRouter();

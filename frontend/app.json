@@ -19,7 +19,11 @@
         "monochromeImage": "./assets/images/Logo.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA"
+      ],
+      "package": "com.gabrielcalu.frontend"
     },
     "web": {
       "output": "static",
@@ -39,11 +43,18 @@
           }
         }
       ],
-      "expo-barcode-scanner"
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "2dd83be8-0b83-420b-994f-6e80270ef18d"
+      }
+    },
+    "owner": "gabrielcalu"
   }
 }
