@@ -43,7 +43,7 @@
           }
         }
       ],
-      "expo-barcode-scanner"
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -54,6 +54,7 @@
       "eas": {
         "projectId": "2dd83be8-0b83-420b-994f-6e80270ef18d"
       }
-    }
+    },
+    "owner": "gabrielcalu"
   }
 }

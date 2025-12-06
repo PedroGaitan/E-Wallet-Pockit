@@ -11,7 +11,6 @@ import { Stack, useRouter } from "expo-router";
 import { useAuth } from "../../providers/auth-provider";
 import { useTheme } from "../../context/ThemeContext";
 import { supabase } from "../../lib/supabase";
-import Purchases from 'react-native-purchases';
 
 export default function QrScreen() {
   const router = useRouter();
@@ -42,20 +41,6 @@ export default function QrScreen() {
     loadQrCode();
   }, [user]);
 
-  useEffect(() => {
-    const checkPremium = async () => {
-      try {
-        const customerInfo = await Purchases.getCustomerInfo();
-        if(!customerInfo.entitlements.active["premium"]) {
-          //router.replace("/views/plans");
-        }
-      } catch (error) {
-        console.error("Error checking premium status:", error);
-      }
-    };
-
-    checkPremium();
-  }, []);
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <Stack.Screen options={{ headerShown: false }} />

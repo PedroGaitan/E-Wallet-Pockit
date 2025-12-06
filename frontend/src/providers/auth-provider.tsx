@@ -1,5 +1,13 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useMemo,
+  ReactNode,
+} from "react";
 import { supabase } from "../lib/supabase";
+import Purchases from "react-native-purchases";
 
 export interface Usuario {
   id: string;
@@ -17,7 +25,6 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<Usuario | null>(null);
   const [mounting, setMounting] = useState(true);
@@ -32,6 +39,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (mounted) {
           setUser(null);
           setMounting(false);
+          try {
+            await Purchases.logOut();
+          } catch {}
         }
         return;
       }
@@ -47,6 +57,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (mounted) {
         setUser(perfil as Usuario);
         setMounting(false);
+
+        // Identify user in RevenueCat for customer tracking
+        if (authUser.id) {
+          try {
+            await Purchases.logIn(authUser.id);
+          } catch (e) {
+            console.error("RevenueCat login error:", e);
+          }
+        }
       }
     };
 
@@ -79,11 +98,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []); // ⬅ se ejecuta UNA sola vez
 
-  return (
-    <AuthContext.Provider value={{ user, mounting }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const value = useMemo(() => ({ user, mounting }), [user, mounting]);
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
